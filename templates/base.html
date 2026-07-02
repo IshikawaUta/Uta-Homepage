@@ -1,0 +1,150 @@
+{# =============================================================================
+   Base Layout - IshikawaUta Portfolio
+   =============================================================================
+   All pages extend this template. Provides:
+   - Meta tags (SEO, Open Graph, Twitter Card)
+   - Tailwind CSS via CDN with custom config
+   - Google Fonts (Inter + Geist Mono)
+   - Theme toggle + tech circles JS
+   - Block system for child templates
+   ============================================================================= #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {# Prevent FOUC: set theme class before first paint #}
+  <script>
+    (function() {
+      var mode = localStorage.getItem('uta-color-mode') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.classList.add(mode);
+    })();
+  </script>
+
+  {# --- Basic meta tags --- #}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  {# Page title - overridable via {% block title %} (min 50 chars for SEO) #}
+  <title>{% block title %}{{ profile.name }} - Full Stack Developer | Portfolio & Open Source{% endblock %}</title>
+
+  {# Page description - overridable via {% block description %} (min 120 chars for SEO) #}
+  <meta name="description" content="{% block description %}Personal website of {{ profile.name }} - Full Stack Developer, Open Source Enthusiast, and Creator of Fenrir Web Framework and Asteri Server{% endblock %}">
+
+  {# Theme color for mobile browsers (light mode default) #}
+  <meta name="theme-color" content="#f2f0eb">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="author" content="{{ profile.name }}">
+  <meta name="keywords" content="{{ profile.name }}, {{ profile.alias }}, portfolio, full stack developer, open source, Python, Fenrir Framework, Asteri Server, web developer, software engineer">
+
+  {# --- Open Graph meta tags (for social media sharing) --- #}
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="{{ profile.name }} | Portfolio">
+  <meta property="og:description" content="Personal website of {{ profile.name }} - Full Stack Developer, Open Source Enthusiast, and Creator of Fenrir Web Framework and Asteri Server">
+  <meta property="og:image" content="{{ profile.avatarUrl }}">
+  <meta property="og:logo" content="{{ profile.avatarUrl }}">
+  <meta property="og:url" content="{{ canonical_url|default('https://ishikawauta.github.io') }}">
+
+  {# --- Twitter Card meta tags --- #}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ profile.name }} | Portfolio">
+  <meta name="twitter:description" content="Personal website of {{ profile.name }} - Full Stack Developer, Open Source Enthusiast, and Creator of Fenrir Web Framework and Asteri Server">
+  <meta name="twitter:image" content="{{ profile.avatarUrl }}">
+
+  {# --- Favicon: uses GitHub avatar URL (no local favicon files) --- #}
+  <link rel="icon" type="image/png" href="{{ profile.avatarUrl }}">
+
+  {# Canonical URL - dynamic, set by route handler #}
+  <link rel="canonical" href="{{ canonical_url|default('/') }}">
+
+  {# JSON-LD structured data block - override in child templates #}
+  {% block json_ld %}{% endblock %}
+
+  {# --- Google Fonts: Inter (body) + Geist Mono (code) --- #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  {# --- Tailwind CSS via CDN (play mode) --- #}
+  {# Suppress CDN production warning #}
+  <script>
+    (function() {
+      var originalWarn = console.warn;
+      console.warn = function() {
+        if (arguments[0] && arguments[0].indexOf && arguments[0].indexOf('cdn.tailwindcss.com') !== -1) return;
+        originalWarn.apply(console, arguments);
+      };
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',  // Toggle dark mode via .dark class on <html>
+      theme: {
+        extend: {
+          // Custom colors using CSS variables (defined in style.css)
+          // These map HSL values from :root / .dark to Tailwind utilities
+          colors: {
+            border: 'hsl(var(--border))',
+            input: 'hsl(var(--input))',
+            ring: 'hsl(var(--ring))',
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+            secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+            destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+            muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+            accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+            popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
+            card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+          },
+          // Font families
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['Geist Mono', 'ui-monospace', 'monospace'],
+          },
+          // Border radius tokens (shadcn/ui compatible)
+          borderRadius: {
+            lg: 'var(--radius)',
+            md: 'calc(var(--radius) - 2px)',
+            sm: 'calc(var(--radius) - 4px)',
+          },
+          // Custom keyframe animations
+          keyframes: {
+            // Orbit animation for tech stack icons (circular path)
+            orbit: {
+              '0%': { transform: 'rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)' },
+              '100%': { transform: 'rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)' },
+            },
+            // Spinning gradient for loading indicator
+            'gradient-spin': {
+              '0%': { transform: 'rotate(0deg)' },
+              '100%': { transform: 'rotate(360deg)' },
+            },
+          },
+          animation: {
+            orbit: 'orbit calc(var(--duration) * 1s) linear infinite',
+            'gradient-spin': 'gradient-spin 2s linear infinite',
+          },
+        },
+      },
+    }
+  </script>
+
+  {# Custom CSS: CSS variables, view transitions, section titles, keyframes safety net #}
+  <link rel="stylesheet" href="/static/css/style.css">
+
+  {# Block for additional head content (e.g., extra meta tags, styles) #}
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-background text-foreground font-sans antialiased">
+  {# Main content block - overridden by child templates #}
+  {% block content %}{% endblock %}
+
+  {# Block for page-specific scripts (before default scripts) #}
+  {% block scripts %}{% endblock %}
+
+  {# Default scripts: theme toggle + tech circles (loaded on every page) #}
+  <script src="/static/js/theme-toggle.js"></script>
+  <script src="/static/js/tech-circles.js"></script>
+</body>
+</html>

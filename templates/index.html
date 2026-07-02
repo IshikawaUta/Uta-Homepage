@@ -1,0 +1,371 @@
+{# =============================================================================
+   Main Page - IshikawaUta Portfolio
+   =============================================================================
+   Sections:
+   1. Background gradients (decorative blurs)
+   2. Theme toggle button (sun/moon)
+   3. Header: name, alias, tagline, social links, code preview
+   4. About & Tech: bio paragraphs + tech stack orbiting circles
+   5. Project Experience: Fenrir Framework showcase
+   6. Achievements: project stats
+   7. Footer: copyright
+   ============================================================================= #}
+{% extends "base.html" %}
+
+{# JSON-LD structured data for SEO (schema.org ProfilePage) #}
+{% block json_ld %}
+<script type="application/ld+json">
+{{ json_ld|safe }}
+</script>
+{% endblock %}
+
+{% block content %}
+<main class="min-h-screen bg-background">
+
+  {# =========================================================================
+     1. BACKGROUND GRADIENTS (decorative)
+     Two blurred gradient circles for ambient background effect.
+     - Top-right: amber/orange glow (light) / primary (dark)
+     - Bottom-left: orange glow (light) / primary (dark)
+     ========================================================================= #}
+  <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <div class="absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-gradient-to-bl from-amber-500/8 to-transparent blur-3xl dark:from-primary/5"></div>
+    <div class="absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full bg-gradient-to-tr from-orange-400/6 to-transparent blur-3xl dark:from-primary/5"></div>
+  </div>
+
+  {# =========================================================================
+     2. THEME TOGGLE BUTTON
+     Fixed position: bottom-right on mobile, top-right on desktop.
+     Contains sun icon (light mode) and moon icon (dark mode).
+     Animations handled by theme-toggle.js using View Transitions API.
+     ========================================================================= #}
+  <div class="fixed bottom-4 right-4 z-50 sm:bottom-auto sm:right-4 sm:top-4">
+    <button
+      type="button"
+      id="theme-toggle"
+      class="relative flex h-8 w-8 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      aria-label="Toggle theme"
+    >
+      {# Sun icon (visible in light mode, hidden in dark mode) #}
+      <svg
+        class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"></circle>
+        <path
+          d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-width="2"
+        ></path>
+      </svg>
+      {# Moon icon (hidden in light mode, visible in dark mode) #}
+      <svg
+        class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M21 14.15A8.75 8.75 0 0 1 9.85 3a7 7 0 1 0 11.15 11.15Z"></path>
+      </svg>
+    </button>
+  </div>
+
+  {# =========================================================================
+     3. MAIN CONTENT CONTAINER
+     Centered, max-width 5xl, responsive padding.
+     ========================================================================= #}
+  <div class="relative z-10 mx-auto w-full max-w-5xl space-y-12 px-4 py-8 sm:py-16">
+
+    {# =======================================================================
+       HEADER SECTION
+       Two-column grid: left (name/info), right (code preview)
+       ======================================================================= #}
+    <header class="grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
+
+      {# --- Left column: Name, alias, tagline, social links --- #}
+      <div class="space-y-6">
+        <div class="space-y-3">
+          <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">
+            <span class="flex items-center gap-3 sm:block">
+              {# Avatar shown only on mobile (sm:hidden) #}
+              <span class="block size-9 shrink-0 overflow-hidden rounded-sm border border-border sm:hidden">
+                <img
+                  width="36"
+                  height="36"
+                  src="{{ profile.avatarUrl }}"
+                  alt="{{ profile.name }} avatar"
+                  class="h-full w-full object-cover contrast-[1.1] saturate-[0.8]"
+                  loading="eager"
+                >
+              </span>
+              <span>{{ profile.name }}</span>
+            </span>
+            <span class="mt-1 block text-lg font-normal text-muted-foreground sm:text-xl">
+              (aka. <span class="text-foreground">{{ profile.alias }}</span>)
+            </span>
+          </h1>
+          <p class="text-sm text-muted-foreground">
+            {{ profile.tagline }}
+          </p>
+        </div>
+
+        {# Social links navigation #}
+        <nav class="flex flex-wrap items-center gap-3 text-sm text-muted-foreground" aria-label="Social links">
+          {% for link in profile.socialLinks %}
+          <a
+            href="{{ link.href }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline underline-offset-2 transition-colors hover:text-foreground"
+          >
+            {{ link.label }}
+          </a>
+          {% endfor %}
+        </nav>
+      </div>
+
+      {# --- Right column: Code preview card --- #}
+      {# Mimics a code editor with traffic light dots, filename, and Python dataclass code. #}
+      <div class="relative overflow-hidden border border-border bg-muted/30 p-5">
+        {# Editor title bar: traffic lights + filename #}
+        <div class="mb-3 flex items-center gap-2">
+          <div class="flex gap-1.5">
+            <div class="size-2.5 rounded-full bg-red-500/80"></div>
+            <div class="size-2.5 rounded-full bg-yellow-500/80"></div>
+            <div class="size-2.5 rounded-full bg-green-500/80"></div>
+          </div>
+          <span class="ml-1 font-mono text-[10px] text-muted-foreground/70 dark:text-muted-foreground/40">
+            {{ profile.codeFile }}
+          </span>
+        </div>
+
+        {# Code content: Python dataclass style with syntax highlighting #}
+        {# Colors: light mode = GitHub dark, dark mode = GitHub dark #}
+        <pre class="font-mono text-[13px] leading-relaxed"><code class="block text-[#24292f] dark:text-[#c9d1d9]"><span class="block"><span class="text-[#cf222e] dark:text-[#ff7b72]">@dataclass</span></span><span class="block"><span class="text-[#cf222e] dark:text-[#ff7b72]">class</span> <span class="text-[#0550ae] dark:text-[#79c0ff]">Dev</span>:</span><span class="block pl-[4ch]">name: <span class="text-[#0550ae] dark:text-[#79c0ff]">str</span> = <span class="text-[#0a3069] dark:text-[#a5d6ff]">"{{ profile.name }}"</span></span><span class="block pl-[4ch]">age: <span class="text-[#0550ae] dark:text-[#79c0ff]">int</span> = <span class="text-[#0550ae] dark:text-[#79c0ff]">21</span></span><span class="block pl-[4ch]">role: <span class="text-[#0550ae] dark:text-[#79c0ff]">str</span> = <span class="text-[#0a3069] dark:text-[#a5d6ff]">"Full Stack"</span></span><span class="block pl-[4ch]">passion: <span class="text-[#0550ae] dark:text-[#79c0ff]">str</span> = <span class="text-[#0a3069] dark:text-[#a5d6ff]">"Building things"</span></span><span class="block"></span><span class="block">me = Dev()</span></code></pre>
+
+        {# Typing cursor indicator with spinning gradient animation #}
+        <div class="ml-4 mt-1 w-fit border border-border/60 bg-background/80 px-2 py-1 text-xs">
+          <div class="flex items-center gap-1.5 font-mono text-muted-foreground/70">
+            <span class="relative size-2.5 overflow-hidden rounded-full">
+              <span class="absolute inset-[-50%] animate-gradient-spin bg-[conic-gradient(from_0deg,#fff,#a855f7,#fff)]"></span>
+              <span class="absolute inset-px rounded-full bg-background/80"></span>
+            </span>
+            <span class="text-[#0a3069] dark:text-[#a5d6ff]">
+              "Building things"
+            </span>
+          </div>
+        </div>
+
+        {# Avatar in top-right corner (desktop only) #}
+        <div class="absolute right-5 top-5 hidden size-12 overflow-hidden rounded-sm border border-border sm:block">
+          <img
+            src="{{ profile.avatarUrl }}"
+            alt="{{ profile.name }} avatar"
+            class="h-full w-full object-cover contrast-[1.1] saturate-[0.8]"
+            loading="eager"
+          >
+        </div>
+      </div>
+    </header>
+
+    {# =======================================================================
+       MAIN SECTIONS CONTAINER
+       ======================================================================= #}
+    <div class="space-y-12">
+
+      {# =====================================================================
+         4. ABOUT & TECH SECTION
+         Two-column grid: left (bio + tags), right (tech stack orbit)
+         ===================================================================== #}
+      <section>
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="section-title flex-1">
+            About & Tech
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+          {# --- Left: About Me + Timeline Tags --- #}
+          <div class="border border-border p-5">
+            <h3 class="mb-3 text-sm font-medium">
+              About Me
+            </h3>
+            {# About paragraphs from PROFILE.about array #}
+            <div class="mb-4 space-y-3 text-sm text-muted-foreground">
+              {% for paragraph in profile.about %}
+              <p>{{ paragraph }}</p>
+              {% endfor %}
+            </div>
+            {# Timeline tags: year + label (e.g., '21 Open Source) #}
+            <div class="flex flex-wrap gap-1.5">
+              {% for tag in profile.tags %}
+              <span
+                class="inline-flex items-center gap-1 border border-border px-2 py-0.5 text-xs text-muted-foreground"
+              >
+                <span class="font-medium text-foreground/70">{{ tag.year }}</span>
+                {{ tag.label }}
+              </span>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# --- Right: Tech Stack Orbiting Circles --- #}
+          {# Displays tech icons in two concentric orbits. #}
+          {# SVG circles are drawn by HTML, icons are placed by tech-circles.js. #}
+          <div class="relative min-h-[240px] select-none overflow-hidden border border-border p-5">
+            <div class="absolute inset-0 flex items-center justify-center opacity-85" id="tech-circles-container">
+              {# Center text placeholder (replaced by icons via JS) #}
+              <span class="pointer-events-none select-none text-4xl font-semibold text-foreground/5">
+                &lt;/&gt;
+              </span>
+              {# SVG orbit circles (dashed lines) - radii updated by JS on mobile #}
+              <svg class="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+                <circle
+                  class="stroke-[#00000033] opacity-80 dark:stroke-[#FFFFFF33]"
+                  cx="50%"
+                  cy="50%"
+                  r="55"
+                  fill="none"
+                  stroke-dasharray="5 7"
+                  stroke-linecap="round"
+                  stroke-width="1.25"
+                  id="inner-circle"
+                ></circle>
+                <circle
+                  class="stroke-[#00000033] opacity-80 dark:stroke-[#FFFFFF33]"
+                  cx="50%"
+                  cy="50%"
+                  r="110"
+                  fill="none"
+                  stroke-dasharray="5 7"
+                  stroke-linecap="round"
+                  stroke-width="1.25"
+                  id="outer-circle"
+                ></circle>
+              </svg>
+              {# Containers where tech-circles.js places the icon elements #}
+              <div id="inner-icons"></div>
+              <div id="outer-icons"></div>
+            </div>
+
+            {# Section header + GitHub link #}
+            <div class="relative z-10 flex items-center justify-between">
+              <h3 class="text-sm font-medium">
+                Tech Stack
+              </h3>
+              <a
+                href="https://github.com/IshikawaUta"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                GitHub
+                <svg class="size-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M5 5h14v14h-2V8.41L6.41 19 5 17.59 15.59 7H5V5Z"></path>
+                </svg>
+              </a>
+            </div>
+            <p class="absolute bottom-5 right-5 z-10 text-xs text-muted-foreground">
+              Always learning
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {# =====================================================================
+         5. PROJECT EXPERIENCE + ACHIEVEMENTS
+         Two-column grid: left (Fenrir showcase), right (achievement cards)
+         ===================================================================== #}
+      <section>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
+          {# --- Left (2/3): Project Experience - Fenrir Framework --- #}
+          <div class="lg:col-span-2">
+            <h2 class="section-title mb-4">
+              Project Experience
+            </h2>
+            <div class="border border-border bg-muted/20 p-5 overflow-auto">
+              <h3 class="mb-2 text-lg font-bold text-foreground">Fenrir Web Framework</h3>
+              {# Badges: PyPI, License, Python, Tests, CI, Performance #}
+              <div class="mb-3 flex flex-wrap gap-2">
+                <a href="https://pypi.org/project/fenrir-framework/" target="_blank" rel="noopener noreferrer" class="inline-block">
+                  <img src="https://img.shields.io/pypi/v/fenrir-framework.svg?color=blueviolet" alt="PyPI version" class="h-5">
+                </a>
+                <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer" class="inline-block">
+                  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" class="h-5">
+                </a>
+                <a href="https://www.python.org/" target="_blank" rel="noopener noreferrer" class="inline-block">
+                  <img src="https://img.shields.io/badge/Python-3.8%2B-blue.svg" alt="Python Version" class="h-5">
+                </a>
+                <a href="https://github.com/IshikawaUta/fenrir/actions" target="_blank" rel="noopener noreferrer" class="inline-block">
+                  <img src="https://img.shields.io/badge/Tests-1536%20Passed-brightgreen.svg" alt="Tests" class="h-5">
+                </a>
+                <a href="https://github.com/IshikawaUta/fenrir/actions/workflows/test.yml" target="_blank" rel="noopener noreferrer" class="inline-block">
+                  <img src="https://github.com/IshikawaUta/fenrir/actions/workflows/test.yml/badge.svg" alt="CI" class="h-5">
+                </a>
+                <span class="inline-block">
+                  <img src="https://img.shields.io/badge/Performance-High--Speed%20ASGI-orange.svg" alt="Performance" class="h-5">
+                </span>
+              </div>
+              {# Project description #}
+              <p class="text-sm leading-relaxed text-muted-foreground">
+                <strong class="text-foreground">Fenrir</strong> is a state-of-the-art, high-performance, hybrid Python web framework built on top of modern ASGI specifications. It elegantly merges the best programming paradigms from Python's most popular web frameworks (<strong>Flask</strong>, <strong>FastAPI</strong>, <strong>Sanic</strong>, <strong>Falcon</strong>, and <strong>Bottle</strong>) into a single unified workspace, powered locally by the premium <strong>Asteri</strong> application server.
+              </p>
+              {# GitHub link #}
+              <a href="https://github.com/IshikawaUta/fenrir" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                View on GitHub
+                <svg class="size-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M5 5h14v14h-2V8.41L6.41 19 5 17.59 15.59 7H5V5Z"></path>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          {# --- Right (1/3): Achievements --- #}
+          {# Lists project stats with title, description, and metric. #}
+          <div>
+            <h2 class="section-title mb-4">
+              Achievements
+            </h2>
+            <div class="space-y-2">
+              {% for achievement in profile.achievements %}
+              <div class="py-1.5">
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-sm font-medium">{{ achievement.title }}</span>
+                  <span class="shrink-0 text-xs text-muted-foreground">{{ achievement.year }}</span>
+                </div>
+                <span class="text-xs text-muted-foreground">{{ achievement.description }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    {# =========================================================================
+       7. FOOTER
+       ========================================================================= #}
+    <footer class="pt-2 text-center text-xs text-muted-foreground">
+      {{ profile.copyright }}
+    </footer>
+  </div>
+</main>
+
+{# =============================================================================
+   TECH ICONS DATA
+   Passed to tech-circles.js via window.__techIcons.
+   Must be set BEFORE tech-circles.js loads (inline script runs first).
+   The JS reads this on DOMContentLoaded and creates orbiting icon elements.
+   ============================================================================= #}
+<script>
+  window.__techIcons = {
+    inner: {{ profile.techStack.innerIcons | tojson }},
+    outer: {{ profile.techStack.outerIcons | tojson }}
+  };
+</script>
+{% endblock %}

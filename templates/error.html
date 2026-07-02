@@ -1,0 +1,40 @@
+{# =============================================================================
+   Error Page - IshikawaUta Portfolio
+   =============================================================================
+   Displays 404 or 500 error with a centered layout.
+   Extends base.html (requires profile variable for meta tags).
+   Used by exception handlers in app.py.
+   ============================================================================= #}
+{% extends "base.html" %}
+
+{# Override page title to show error code #}
+{% block title %}{{ status }} | Error{% endblock %}
+
+{% block content %}
+<main class="flex min-h-screen items-center justify-center bg-background px-4">
+  <div class="text-center">
+    {# Large error status code (e.g., 404, 500) #}
+    <h1 class="mb-2 text-6xl font-bold tracking-tight text-foreground">{{ status }}</h1>
+
+    {# Error message - show static text for 404, dynamic message for others #}
+    <p class="mb-6 text-lg text-muted-foreground">
+      {% if status == 404 %}
+        Page not found
+      {% else %}
+        {{ message }}
+      {% endif %}
+    </p>
+
+    {# Back to home link with arrow icon #}
+    <a
+      href="/"
+      class="inline-flex items-center gap-2 border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+    >
+      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m15 18-6-6 6-6"/>
+      </svg>
+      Back home
+    </a>
+  </div>
+</main>
+{% endblock %}
