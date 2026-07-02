@@ -3,9 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Fenrir-Framework-9b59b6.svg)](https://pypi.org/project/fenrir-framework/)
-[![Tests](https://img.shields.io/badge/Tests-116%20Passed-brightgreen.svg)](https://github.com/IshikawaUta/uta-home/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://github.com/IshikawaUta/uta-home/actions)
-[![CI](https://github.com/IshikawaUta/uta-home/actions/workflows/ci.yml/badge.svg)](https://github.com/IshikawaUta/uta-home/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/Tests-116%20Passed-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
+[![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
+[![CI](https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml/badge.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml)
 [![Deployment](https://img.shields.io/badge/Deployed-Vercel-black.svg)](https://vercel.app)
 [![Performance](https://img.shields.io/badge/Performance-High--Speed%20ASGI-orange.svg)]()
 
