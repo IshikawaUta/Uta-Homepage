@@ -1,0 +1,174 @@
+/* =============================================================================
+   Custom CSS - IshikawaUta Portfolio
+   =============================================================================
+   CSS variables for light/dark mode, overrides for Tailwind CDN,
+   View Transitions API support, section titles, and keyframe animations.
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   CSS Variables - Light Mode (default)
+   HSL values without hsl() wrapper (added by Tailwind via hsl(var(--name)))
+   Matched to the Homepage (Nuxt + Tailwind) color scheme.
+   --------------------------------------------------------------------------- */
+:root {
+  --background: 40 20% 94%;        /* Warm off-white */
+  --foreground: 30 10% 12%;        /* Dark brown-black */
+  --card: 40 18% 96%;
+  --card-foreground: 30 10% 12%;
+  --popover: 40 18% 96%;
+  --popover-foreground: 30 10% 12%;
+  --primary: 30 8% 15%;            /* Near-black with warm tint */
+  --primary-foreground: 40 20% 98%;
+  --secondary: 40 15% 91%;
+  --secondary-foreground: 30 8% 15%;
+  --muted: 40 15% 91%;
+  --muted-foreground: 30 6% 42%;   /* Gray for secondary text */
+  --accent: 40 15% 91%;
+  --accent-foreground: 30 8% 15%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 40 12% 85%;
+  --input: 40 12% 85%;
+  --ring: 30 8% 15%;
+  --radius: 0.5rem;                /* Border radius token */
+}
+
+/* ---------------------------------------------------------------------------
+   CSS Variables - Dark Mode
+   Activated by .dark class on <html> (toggled by theme-toggle.js)
+   --------------------------------------------------------------------------- */
+.dark {
+  --background: 240 10% 4%;         /* Very dark blue-black */
+  --foreground: 0 0% 98%;           /* Near-white */
+  --card: 240 10% 4%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 4%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 6% 10%;
+  --secondary: 240 4% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 4% 16%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 240 4% 16%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 240 5% 84%;
+}
+
+/* ---------------------------------------------------------------------------
+   Global Reset & Base Styles
+   Override Tailwind CDN defaults with !important to ensure consistency.
+   --------------------------------------------------------------------------- */
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;              /* Prevent horizontal scroll */
+  scrollbar-width: none;           /* Hide scrollbar (Firefox) */
+  -webkit-tap-highlight-color: transparent;  /* Remove tap highlight on mobile */
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Dark mode color scheme hint for form controls */
+html.dark {
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+   View Transitions API
+   Controls z-index layering during theme toggle animation.
+   Old theme transitions out, new theme transitions in.
+   --------------------------------------------------------------------------- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;                  /* Disable default cross-fade */
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;                       /* Old theme goes behind */
+}
+
+::view-transition-new(root) {
+  z-index: 2;                       /* New theme comes in front */
+}
+
+/* In dark mode, reverse the z-index so light->dark transition works */
+.dark::view-transition-old(root) {
+  z-index: 2;
+}
+
+.dark::view-transition-new(root) {
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Typography Overrides
+   --------------------------------------------------------------------------- */
+code,
+kbd,
+samp,
+pre {
+  font-family: inherit;             /* Use parent font instead of browser default */
+}
+
+/* Text selection color */
+::selection {
+  background-color: hsl(var(--primary) / 0.18);
+}
+
+/* Hide scrollbar (WebKit/Chrome/Safari) */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Section Title Style
+   Used for section headers like "About & Tech", "Project Experience"
+   --------------------------------------------------------------------------- */
+.section-title {
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ---------------------------------------------------------------------------
+   Keyframe Animations (safety net - also defined in Tailwind config)
+   If Tailwind CDN fails to load, these ensure animations still work.
+   --------------------------------------------------------------------------- */
+
+/* Orbit animation: icons travel in a circular path while counter-rotating
+   to stay upright. Uses CSS variable --radius for the orbit distance. */
+@keyframes orbit {
+  0% {
+    transform: rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg);
+  }
+}
+
+/* Gradient spin: continuous rotation for the typing indicator */
+@keyframes gradient-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
