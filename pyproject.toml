@@ -1,3 +1,9 @@
+[project]
+name = "uta-home"
+version = "1.0.0"
+description = "Portfolio website built with Fenrir Framework"
+requires-python = ">=3.10"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
