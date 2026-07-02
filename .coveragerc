@@ -1,0 +1,23 @@
+[run]
+source = .
+omit =
+    tests/*
+    .github/*
+    api/*
+    public/*
+    AGENTS.md
+    *.pyc
+    __pycache__/*
+    htmlcov/*
+    .coverage
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if __name__ == .__main__.
+    raise NotImplementedError
+    pass
+    except ImportError
+show_missing = true
+fail_under = 95
