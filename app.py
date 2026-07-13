@@ -133,7 +133,6 @@ PROFILE = {
             ],
             "description": 'Sistem manajemen inventaris barang modern berbasis <strong class="text-foreground">Fenrir Framework v4.1.2</strong> + <strong>MongoDB Atlas</strong>. Backend async Python, database NoSQL, media storage via Cloudinary, frontend Jinja2 + Vanilla JS.',
             "github": "https://github.com/IshikawaUta/stokbox-inventory-managements",
-            "demo": "https://stokbox.up.railway.app/login",
         },
     ],
 }
