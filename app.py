@@ -74,6 +74,68 @@ PROFILE = {
         {"title": "Ofa Framework", "description": "Templating Ruby web framework", "year": "1k Stars"},
         {"title": "Open Source", "description": "151+ repositories and counting", "year": "Builder"},
     ],
+    # Project experience cards with pagination
+    "projects": [
+        {
+            "title": "Fenrir Web Framework",
+            "badges": [
+                {"href": "https://pypi.org/project/fenrir-framework/", "img": "https://img.shields.io/pypi/v/fenrir-framework.svg?color=blueviolet", "alt": "PyPI version"},
+                {"href": "https://opensource.org/licenses/MIT", "img": "https://img.shields.io/badge/License-MIT-blue.svg", "alt": "License: MIT"},
+                {"href": "https://www.python.org/", "img": "https://img.shields.io/badge/Python-3.8%2B-blue.svg", "alt": "Python Version"},
+                {"href": "https://github.com/IshikawaUta/fenrir/actions", "img": "https://img.shields.io/badge/Tests-1536%20Passed-brightgreen.svg", "alt": "Tests"},
+                {"href": "https://github.com/IshikawaUta/fenrir/actions/workflows/test.yml", "img": "https://github.com/IshikawaUta/fenrir/actions/workflows/test.yml/badge.svg", "alt": "CI"},
+                {"href": "", "img": "https://img.shields.io/badge/Performance-High--Speed%20ASGI-orange.svg", "alt": "Performance"},
+            ],
+            "description": '<strong class="text-foreground">Fenrir</strong> is a state-of-the-art, high-performance, hybrid Python web framework built on top of modern ASGI specifications. It elegantly merges the best programming paradigms from Python\'s most popular web frameworks (<strong>Flask</strong>, <strong>FastAPI</strong>, <strong>Sanic</strong>, <strong>Falcon</strong>, and <strong>Bottle</strong>) into a single unified workspace, powered locally by the premium <strong>Asteri</strong> application server.',
+            "github": "https://github.com/IshikawaUta/fenrir",
+            "demo": "https://fenrir.eksashop.web.id/",
+        },
+        {
+            "title": "Asteri Web Server",
+            "badges": [
+                {"href": "https://pypi.org/project/asteri/", "img": "https://img.shields.io/pypi/v/asteri.svg?color=blueviolet", "alt": "PyPI version"},
+                {"href": "https://opensource.org/licenses/MIT", "img": "https://img.shields.io/badge/License-MIT-blue.svg", "alt": "License: MIT"},
+                {"href": "https://www.python.org/", "img": "https://img.shields.io/badge/Python-3.10%2B-blue.svg", "alt": "Python Version"},
+                {"href": "https://github.com/IshikawaUta/asteri/actions", "img": "https://img.shields.io/badge/CI-Passing-brightgreen.svg", "alt": "CI"},
+                {"href": "", "img": "https://img.shields.io/badge/HTTP-1.1%20%7C%202%20%7C%203%20(QUIC)-orange.svg", "alt": "Protocols"},
+                {"href": "", "img": "https://img.shields.io/badge/Workers-Sync%20%7C%20GThread%20%7C%20Gevent%20%7C%20ASGI%20%7C%20Tornado-brightgreen.svg", "alt": "Workers"},
+            ],
+            "description": '<strong class="text-foreground">Asteri</strong> is a state-of-the-art, high-performance, production-ready Python web server with rich CLI argument system. Supports <strong>HTTP/1.1</strong>, <strong>HTTP/2</strong>, <strong>HTTP/3 (QUIC)</strong>, WSGI, ASGI, uWSGI, WebSocket, and premium event loops like <strong>Tornado</strong>. Features C-Extension core, Prometheus/OpenTelemetry metrics, proxy protocol, systemd socket activation, and a premium status dashboard.',
+            "github": "https://github.com/IshikawaUta/asteri",
+        },
+        {
+            "title": "IshikawaUta Portfolio",
+            "badges": [
+                {"href": "https://opensource.org/licenses/MIT", "img": "https://img.shields.io/badge/License-MIT-blue.svg", "alt": "License: MIT"},
+                {"href": "https://www.python.org/", "img": "https://img.shields.io/badge/Python-3.10%2B-blue.svg", "alt": "Python Version"},
+                {"href": "https://pypi.org/project/fenrir-framework/", "img": "https://img.shields.io/badge/Fenrir-Framework-9b59b6.svg", "alt": "Framework"},
+                {"href": "https://github.com/IshikawaUta/Uta-Homepage/actions", "img": "https://img.shields.io/badge/Tests-116%20Passed-brightgreen.svg", "alt": "Tests"},
+                {"href": "https://github.com/IshikawaUta/Uta-Homepage/actions", "img": "https://img.shields.io/badge/Coverage-100%25-brightgreen.svg", "alt": "Coverage"},
+                {"href": "https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml", "img": "https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml/badge.svg", "alt": "CI"},
+                {"href": "", "img": "https://img.shields.io/badge/Deployed-Vercel-black.svg", "alt": "Deployment"},
+                {"href": "", "img": "https://img.shields.io/badge/Performance-High--Speed%20ASGI-orange.svg", "alt": "Performance"},
+            ],
+            "description": 'Portfolio website built with <strong class="text-foreground">Fenrir Framework</strong>, featuring performance-first architecture with no database dependency.',
+            "github": "https://github.com/IshikawaUta/Uta-Homepage",
+            "demo": "https://uta.eksashop.web.id",
+        },
+        {
+            "title": "InventarisKu",
+            "badges": [
+                {"href": "https://pypi.org/project/fenrir-framework/", "img": "https://img.shields.io/badge/Fenrir-4.1.2-purple.svg", "alt": "Fenrir Framework"},
+                {"href": "https://opensource.org/licenses/MIT", "img": "https://img.shields.io/badge/License-MIT-blue.svg", "alt": "License: MIT"},
+                {"href": "https://www.python.org/", "img": "https://img.shields.io/badge/Python-3.12-blue.svg", "alt": "Python Version"},
+                {"href": "https://github.com/IshikawaUta/stokbox-inventory-managements/actions", "img": "https://img.shields.io/badge/Tests-508%20Passed-brightgreen.svg", "alt": "Tests"},
+                {"href": "https://github.com/IshikawaUta/stokbox-inventory-managements/actions/workflows/test.yml", "img": "https://github.com/IshikawaUta/stokbox-inventory-managements/actions/workflows/test.yml/badge.svg", "alt": "CI"},
+                {"href": "", "img": "https://img.shields.io/badge/Coverage-93%25-brightgreen.svg", "alt": "Coverage"},
+                {"href": "https://www.mongodb.com/atlas", "img": "https://img.shields.io/badge/DB-MongoDB%20Atlas-green.svg", "alt": "MongoDB"},
+                {"href": "https://cloudinary.com", "img": "https://img.shields.io/badge/Storage-Cloudinary-orange.svg", "alt": "Cloudinary"},
+            ],
+            "description": 'Sistem manajemen inventaris barang modern berbasis <strong class="text-foreground">Fenrir Framework v4.1.2</strong> + <strong>MongoDB Atlas</strong>. Backend async Python, database NoSQL, media storage via Cloudinary, frontend Jinja2 + Vanilla JS.',
+            "github": "https://github.com/IshikawaUta/stokbox-inventory-managements",
+            "demo": "https://stokbox.up.railway.app/login",
+        },
+    ],
 }
 
 # ---------------------------------------------------------------------------
@@ -169,5 +231,5 @@ async def server_error(req, exc):
 # ---------------------------------------------------------------------------
 # Direct execution (fallback if not using fenrir CLI)
 # ---------------------------------------------------------------------------
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     app.run()
