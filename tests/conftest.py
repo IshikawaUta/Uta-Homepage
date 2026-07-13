@@ -20,12 +20,6 @@ def client():
 
 
 @pytest.fixture
-def profile():
-    """Return the PROFILE data dict."""
-    return PROFILE
-
-
-@pytest.fixture
 def sample_site_url():
     """Return a sample site URL for testing."""
     return "http://localhost:8000"
