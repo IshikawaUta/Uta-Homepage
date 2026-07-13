@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Fenrir-Framework-9b59b6.svg)](https://pypi.org/project/fenrir-framework/)
-[![Tests](https://img.shields.io/badge/Tests-116%20Passed-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
+[![Tests](https://img.shields.io/badge/Tests-127%20Passed-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
 [![CI](https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml/badge.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml)
 [![Deployment](https://img.shields.io/badge/Deployed-Vercel-black.svg)](https://vercel.app)
@@ -18,6 +18,7 @@ Portfolio website built with [Fenrir Framework](https://github.com/IshikawaUta/f
 - 100% UI match with original Nuxt 4 + Tailwind CSS design
 - Dark/Light theme with View Transitions API animation
 - Orbiting tech stack icons with SVG circles
+- Project Experience with client-side pagination
 - SEO optimized: JSON-LD, dynamic sitemap.xml, robots.txt, canonical URLs
 - Performance-first: GZip compression, CDN assets, minimal JS
 - No database - all data hardcoded in Python
@@ -37,30 +38,33 @@ Portfolio website built with [Fenrir Framework](https://github.com/IshikawaUta/f
 ```
 uta-home/
 ├── api/
-│   └── index.py           # Vercel entrypoint
+│   └── index.py               # Vercel entrypoint
 ├── public/
 │   └── static/
-│       ├── css/style.css   # CSS variables, view transitions
+│       ├── css/style.css      # CSS variables, view transitions
 │       └── js/
 │           ├── theme-toggle.js
-│           └── tech-circles.js
+│           ├── tech-circles.js
+│           └── pagination.js
 ├── static/
-│   ├── css/style.css       # Local development CSS
+│   ├── css/style.css          # Local development CSS
 │   └── js/
 │       ├── theme-toggle.js
-│       └── tech-circles.js
+│       ├── tech-circles.js
+│       └── pagination.js
 ├── templates/
-│   ├── base.html           # Base layout
-│   ├── index.html          # Main page
-│   └── error.html          # 404/500 error page
+│   ├── base.html              # Base layout
+│   ├── index.html             # Main page
+│   └── error.html             # 404/500 error page
 ├── tests/
-│   ├── test_app.py         # 116 tests, 100% coverage
-│   └── conftest.py         # Pytest fixtures
-├── app.py                  # Application entry point
-├── vercel.json             # Vercel configuration
-├── requirements.txt        # Production dependencies
-├── requirements-dev.txt    # Development dependencies
-└── pyproject.toml          # Project configuration
+│   ├── test_app.py            # 127 tests, 100% coverage
+│   └── conftest.py            # Pytest fixtures
+├── .coveragerc                # Coverage config
+├── app.py                     # Application entry point + data
+├── vercel.json                # Vercel configuration
+├── requirements.txt           # Production dependencies
+├── requirements-dev.txt       # Development dependencies
+└── pytest.ini                 # Pytest configuration
 ```
 
 ## Quick Start
@@ -109,7 +113,7 @@ pytest tests/ -v --cov=. --cov-report=term-missing
 pytest tests/ -v --cov=. --cov-report=html
 ```
 
-Current coverage: **100%** (116 tests)
+Current coverage: **100%** (127 tests)
 
 ## Deployment
 
@@ -132,6 +136,7 @@ Edit the `PROFILE` dictionary in `app.py` to customize:
 - Tech stack icons
 - Social links
 - Achievement cards
+- Project experience cards (with pagination)
 
 ## Performance
 
