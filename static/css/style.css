@@ -172,3 +172,45 @@ pre {
     transform: rotate(360deg);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Pagination Styles
+   Used by project-pagination in Project Experience section
+   --------------------------------------------------------------------------- */
+.pagination-nav {
+  user-select: none;
+}
+
+.pagination-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-family: inherit;
+}
+
+.pagination-btn:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.pagination-dot {
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 200ms ease, transform 200ms ease;
+}
+
+.pagination-dot:hover {
+  transform: scale(1.5);
+}
+
+.pagination-dot:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.project-page {
+  will-change: opacity, transform;
+}
