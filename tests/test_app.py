@@ -96,6 +96,32 @@ class TestProfileData:
             assert "description" in ach
             assert "year" in ach
 
+    def test_profile_has_projects(self):
+        assert "projects" in PROFILE
+        assert isinstance(PROFILE["projects"], list)
+        assert len(PROFILE["projects"]) >= 1
+
+    def test_profile_project_structure(self):
+        for project in PROFILE["projects"]:
+            assert "title" in project
+            assert "badges" in project
+            assert "description" in project
+            assert "github" in project
+            assert isinstance(project["title"], str)
+            assert isinstance(project["badges"], list)
+            assert isinstance(project["description"], str)
+            assert isinstance(project["github"], str)
+
+    def test_profile_project_badge_structure(self):
+        for project in PROFILE["projects"]:
+            for badge in project["badges"]:
+                assert "href" in badge
+                assert "img" in badge
+                assert "alt" in badge
+                assert isinstance(badge["href"], str)
+                assert isinstance(badge["img"], str)
+                assert isinstance(badge["alt"], str)
+
 
 # =============================================================================
 # build_jsonld() Tests
@@ -255,6 +281,27 @@ class TestIndexRoute:
         resp = await client.get("/")
         for tag in PROFILE["tags"]:
             assert tag["label"].encode() in resp.content
+
+    @pytest.mark.anyio
+    async def test_index_contains_projects_data(self, client):
+        resp = await client.get("/")
+        assert b"__projectsData" in resp.content
+
+    @pytest.mark.anyio
+    async def test_index_contains_project_titles(self, client):
+        resp = await client.get("/")
+        for project in PROFILE["projects"]:
+            assert project["title"].encode() in resp.content
+
+    @pytest.mark.anyio
+    async def test_index_contains_pagination_container(self, client):
+        resp = await client.get("/")
+        assert b"project-pagination" in resp.content
+
+    @pytest.mark.anyio
+    async def test_index_contains_pagination_script(self, client):
+        resp = await client.get("/")
+        assert b"pagination.js" in resp.content
 
     @pytest.mark.anyio
     async def test_index_contains_copyright(self, client):
@@ -545,6 +592,21 @@ class TestStaticFiles:
         assert b"OUTER_RADIUS" in resp.content
         assert b"DURATION" in resp.content
 
+    @pytest.mark.anyio
+    async def test_pagination_js_returns_200(self, client):
+        resp = await client.get("/static/js/pagination.js")
+        assert resp.status_code == 200
+
+    @pytest.mark.anyio
+    async def test_pagination_js_content_type(self, client):
+        resp = await client.get("/static/js/pagination.js")
+        assert "javascript" in resp.headers.get("content-type", "")
+
+    @pytest.mark.anyio
+    async def test_pagination_js_contains_init(self, client):
+        resp = await client.get("/static/js/pagination.js")
+        assert b"initProjectPagination" in resp.content
+
 
 # =============================================================================
 # Template Rendering Tests
@@ -755,3 +817,11 @@ class TestViewTransitionsCSS:
     async def test_css_contains_gradient_spin_keyframes(self, client):
         resp = await client.get("/static/css/style.css")
         assert b"@keyframes gradient-spin" in resp.content
+
+    @pytest.mark.anyio
+    async def test_css_contains_pagination_styles(self, client):
+        resp = await client.get("/static/css/style.css")
+        assert b"pagination-nav" in resp.content
+        assert b"pagination-btn" in resp.content
+        assert b"pagination-dot" in resp.content
+        assert b"project-page" in resp.content
