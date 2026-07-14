@@ -22,11 +22,13 @@ app = Fenrir(
     template_folder="templates",
 )
 
-# GZip compression + static file serving (only for local dev, not Vercel/Docker)
+# GZip compression (skip in Vercel/Docker - handled upstream)
 if not os.environ.get("VERCEL") and not os.environ.get("DOCKER"):
     from fenrir.middleware import GZipMiddleware
     app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=6)
 
+# Serve static files (skip in Vercel - serves from public/ automatically)
+if not os.environ.get("VERCEL"):
     from fenrir.static import StaticFiles
     base_dir = os.path.dirname(os.path.abspath(__file__))
     app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")))
