@@ -12,13 +12,15 @@
 - UI 100% identik dengan ~/Documents/Homepage (Nuxt 4 + Tailwind CSS)
 - Performance-first: GZip middleware, CDN assets, minimal JS
 - Data hardcoded di app.py (tanpa database)
-- Deployed to Vercel with GitHub Actions CI/CD
+- Deployed to Vercel + Docker with Cloudflare Tunnel
 
 ## Perintah
 - Jalankan: `fenrir run app:app --host 0.0.0.0 --port 8000`
 - Dev mode: `fenrir run app:app --dev`
 - Lihat routes: `fenrir routes app:app`
 - Jalankan tests: `pytest tests/ -v --cov=. --cov-report=term-missing`
+- Docker build: `docker compose up -d --build`
+- Docker logs: `docker compose logs -f`
 
 ## Struktur
 - `app.py` - Entry point Fenrir + data profile + routes
@@ -26,10 +28,15 @@
 - `templates/` - Jinja2 templates (base.html, index.html, error.html)
 - `static/` - CSS, JS, assets (local development)
 - `public/static/` - CSS, JS, assets (Vercel deployment)
-- `tests/` - 116 tests, 100% coverage
+- `tests/` - 127 tests, 100% coverage
+- `Dockerfile` - Docker image (Python 3.12-slim + uvicorn)
+- `docker-compose.yml` - Web + Cloudflare Tunnel services
+- `.dockerignore` - Exclude .env, tests, dev files
+- `.env` - Cloudflare Tunnel token (tidak di-commit)
+- `.env.example` - Template environment variables
 
 ## Performance
-- GZip middleware aktif (local/production only)
+- GZip middleware aktif (local/production, skip di Docker)
 - Tailwind CSS via CDN
 - Geist fonts via Google Fonts CDN
 - JS deferred loading
@@ -47,6 +54,22 @@
 - Comprehensive keywords meta tag
 
 ## Deployment
-- Vercel: automatic deployment from main branch
+### Vercel
+- Automatic deployment from main branch
 - GitHub Actions: test on Python 3.10/3.11/3.12, coverage report
-- Environment variables: none required (all data hardcoded)
+- URL: https://uta.eksashop.web.id
+
+### Docker + Cloudflare Tunnel
+- Uvicorn server (2 workers) di container `ishikawauta-portfolio`
+- Cloudflare Tunnel di container `cloudflare-tunnel` (HTTP/2)
+- Port: 8888
+- URL: https://folio.eksashop.web.id
+- Cloudflare Zero Trust: Bot Challenge aktif
+- `.env` berisi `CLOUDFLARE_TUNNEL_TOKEN` (dibaca docker-compose)
+- Token di-pass sebagai `TUNNEL_TOKEN` env var (bukan di command args)
+- `.dockerignore` mengecualikan `.env` supaya tidak bocor ke image layers
+
+## Environment Variables
+- `VERCEL` - Auto-set oleh Vercel (skip GZip + static mount)
+- `DOCKER` - Auto-set di Dockerfile (skip GZip, tetap mount static)
+- `CLOUDFLARE_TUNNEL_TOKEN` - Hanya di `.env`, dibaca docker-compose

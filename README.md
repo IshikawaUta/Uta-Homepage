@@ -11,7 +11,8 @@
 
 Portfolio website built with [Fenrir Framework](https://github.com/IshikawaUta/fenrir), featuring performance-first architecture with no database dependency.
 
-**Live Demo:** [https://uta.eksashop.web.id](https://uta.eksashop.web.id)
+**Live Demo (Vercel):** [https://uta.eksashop.web.id](https://uta.eksashop.web.id)
+**Live Demo (Docker):** [https://folio.eksashop.web.id](https://folio.eksashop.web.id)
 
 ## Features
 
@@ -22,16 +23,17 @@ Portfolio website built with [Fenrir Framework](https://github.com/IshikawaUta/f
 - SEO optimized: JSON-LD, dynamic sitemap.xml, robots.txt, canonical URLs
 - Performance-first: GZip compression, CDN assets, minimal JS
 - No database - all data hardcoded in Python
-- Deployed on Vercel with automatic CI/CD
+- Dual deployment: Vercel + Docker with Cloudflare Tunnel
 
 ## Tech Stack
 
 - **Framework:** Fenrir Framework (Python ASGI)
-- **Server:** Asteri Server (ASGI)
+- **Server:** Uvicorn (Docker) / Vercel Serverless
 - **Styling:** Tailwind CSS (CDN)
 - **Fonts:** Geist Sans & Mono (Google Fonts)
-- **Deployment:** Vercel
+- **Deployment:** Vercel + Docker + Cloudflare Tunnel
 - **CI/CD:** GitHub Actions
+- **Container:** Python 3.12-slim
 
 ## Project Structure
 
@@ -60,6 +62,10 @@ uta-home/
 │   ├── test_app.py            # 127 tests, 100% coverage
 │   └── conftest.py            # Pytest fixtures
 ├── .coveragerc                # Coverage config
+├── .dockerignore              # Docker build exclusions
+├── .env.example               # Environment variables template
+├── Dockerfile                 # Docker image definition
+├── docker-compose.yml         # Web + Cloudflare Tunnel services
 ├── app.py                     # Application entry point + data
 ├── vercel.json                # Vercel configuration
 ├── requirements.txt           # Production dependencies
@@ -100,6 +106,45 @@ fenrir run app:app --host 0.0.0.0 --port 8000 --workers 2
 fenrir routes app:app
 ```
 
+## Docker
+
+### Prerequisites
+
+- Docker + Docker Compose
+
+### Setup
+
+```bash
+# Create .env from template
+cp .env.example .env
+
+# Edit .env and add your Cloudflare Tunnel token
+CLOUDFLARE_TUNNEL_TOKEN=your-token-here
+```
+
+### Run
+
+```bash
+# Build and start containers
+docker compose up -d --build
+
+# Check logs
+docker compose logs -f
+
+# Stop containers
+docker compose down
+```
+
+Services:
+- **web** - Uvicorn server on port 8888
+- **tunnel** - Cloudflare Tunnel (HTTP/2) forwarding to localhost:8888
+
+### Security
+
+- `.env` is excluded from Docker build via `.dockerignore`
+- Tunnel token passed as `TUNNEL_TOKEN` env var (not in command args)
+- `DOCKER=1` env var auto-set in Dockerfile
+
 ## Testing
 
 ```bash
@@ -123,9 +168,18 @@ Current coverage: **100%** (127 tests)
 2. Import repository in Vercel dashboard
 3. Deploy automatically
 
+### Docker + Cloudflare Tunnel
+
+1. Set up Cloudflare Tunnel in Zero Trust Dashboard
+2. Create `.env` with `CLOUDFLARE_TUNNEL_TOKEN`
+3. Run `docker compose up -d --build`
+4. Configure DNS route for your domain
+
 ### Environment Variables
 
-No environment variables required. All data is hardcoded in `app.py`.
+- `VERCEL` - Auto-set by Vercel (skip GZip + static mount)
+- `DOCKER` - Auto-set in Dockerfile (skip GZip, keep static mount)
+- `CLOUDFLARE_TUNNEL_TOKEN` - Only in `.env`, read by docker-compose
 
 ## Customization
 
@@ -140,7 +194,7 @@ Edit the `PROFILE` dictionary in `app.py` to customize:
 
 ## Performance
 
-- GZip compression enabled (local/production)
+- GZip compression enabled (local/production, skipped in Docker)
 - Tailwind CSS via CDN (no build step)
 - Geist fonts via Google Fonts CDN
 - JavaScript deferred loading
