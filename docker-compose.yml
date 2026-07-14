@@ -1,0 +1,19 @@
+services:
+  web:
+    build: .
+    container_name: ishikawauta-portfolio
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --protocol http2 --url http://localhost:8888
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    network_mode: host
+    depends_on:
+      - web

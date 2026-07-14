@@ -22,12 +22,11 @@ app = Fenrir(
     template_folder="templates",
 )
 
-# GZip compression (only for local/production, not Vercel which handles it)
-if not os.environ.get("VERCEL"):
+# GZip compression + static file serving (only for local dev, not Vercel/Docker)
+if not os.environ.get("VERCEL") and not os.environ.get("DOCKER"):
     from fenrir.middleware import GZipMiddleware
     app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=6)
 
-    # Serve static files locally (Vercel serves from public/ automatically)
     from fenrir.static import StaticFiles
     base_dir = os.path.dirname(os.path.abspath(__file__))
     app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")))
@@ -131,8 +130,20 @@ PROFILE = {
                 {"href": "https://www.mongodb.com/atlas", "img": "https://img.shields.io/badge/DB-MongoDB%20Atlas-green.svg", "alt": "MongoDB"},
                 {"href": "https://cloudinary.com", "img": "https://img.shields.io/badge/Storage-Cloudinary-orange.svg", "alt": "Cloudinary"},
             ],
-            "description": 'Sistem manajemen inventaris barang modern berbasis <strong class="text-foreground">Fenrir Framework v4.1.2</strong> + <strong>MongoDB Atlas</strong>. Backend async Python, database NoSQL, media storage via Cloudinary, frontend Jinja2 + Vanilla JS.',
+            "description": 'Modern inventory management system built with <strong class="text-foreground">Fenrir Framework v4.1.2</strong> + <strong>MongoDB Atlas</strong>. Async Python backend, NoSQL database, Cloudinary media storage, Jinja2 + Vanilla JS frontend.',
             "github": "https://github.com/IshikawaUta/stokbox-inventory-managements",
+        },
+        {
+            "title": "DOSStack",
+            "badges": [
+                {"href": "https://opensource.org/licenses/MIT", "img": "https://img.shields.io/badge/License-MIT-blue.svg", "alt": "License: MIT"},
+                {"href": "", "img": "https://img.shields.io/badge/Type-Compiled%20Binary-red.svg", "alt": "Type"},
+                {"href": "", "img": "https://img.shields.io/badge/Attacks-19%20Modes-brightgreen.svg", "alt": "Attacks"},
+                {"href": "", "img": "https://img.shields.io/badge/Engines-Thread%20%7C%20Epoll%20%7C%20MP-blueviolet.svg", "alt": "Engines"},
+                {"href": "", "img": "https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey.svg", "alt": "Platform"},
+            ],
+            "description": '<strong class="text-foreground">DOSStack</strong> is a compiled DoS testing framework with 19 attack modes (HTTP, TCP, UDP, Slowloris, ICMP, TLS, Mixed, raw SYN/ACK/RST/FIN/SYNACK, IP fragmentation, and 6 amplification vectors). Features 3 engines (thread pool, epoll, multiprocessing), connection pooling, burst mode, bandwidth control, IP spoofing, proxy rotation, and real-time stats dashboard.',
+            "github": "https://github.com/IshikawaUta/dosstack",
         },
     ],
 }
