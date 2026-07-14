@@ -84,8 +84,8 @@ uta-home/
 
 ```bash
 # Clone the repository
-git clone https://github.com/IshikawaUta/uta-home.git
-cd uta-home
+git clone https://github.com/IshikawaUta/Uta-Homepage.git
+cd Uta-Homepage
 
 # Install dependencies
 pip install -r requirements.txt
