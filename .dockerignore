@@ -17,3 +17,4 @@ docker-compose.yml
 .dockerignore
 requirements-dev.txt
 pytest.ini
+seed.py
