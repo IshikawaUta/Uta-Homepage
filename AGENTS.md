@@ -10,8 +10,10 @@
 ## Project: uta-home
 - Portfolio website dengan Fenrir Framework
 - UI 100% identik dengan ~/Documents/Homepage (Nuxt 4 + Tailwind CSS)
-- Performance-first: GZip middleware, CDN assets, minimal JS
-- Data hardcoded di app.py (tanpa database)
+- Performance-first: GZip middleware, CDN assets, minimal JS, 60s cache
+- **MongoDB Atlas** via async **Motor** driver (fallback ke hardcoded data)
+- Admin CMS: login, CRUD projects (CSRF protected, rate limited, session TTL)
+- Security: XSS sanitized (bleach), CSRF tokens, timing-safe compare, bcrypt
 - Deployed to Vercel + Docker with Cloudflare Tunnel
 
 ## Perintah
@@ -26,13 +28,15 @@
 - `app.py` - Entry point Fenrir + data profile + routes
 - `api/index.py` - Vercel ASGI entrypoint
 - `templates/` - Jinja2 templates (base.html, index.html, error.html)
+- `templates/admin/` - Admin templates (dashboard, login, project form)
 - `static/` - CSS, JS, assets (local development)
 - `public/static/` - CSS, JS, assets (Vercel deployment)
-- `tests/` - 127 tests, 100% coverage
+- `tests/` - 194 tests, 100% coverage
+- `seed.py` - One-time MongoDB seeder untuk project data
 - `Dockerfile` - Docker image (Python 3.12-slim + uvicorn)
 - `docker-compose.yml` - Web + Cloudflare Tunnel services
 - `.dockerignore` - Exclude .env, tests, dev files
-- `.env` - Cloudflare Tunnel token (tidak di-commit)
+- `.env` - Cloudflare Tunnel token + MONGODB_URI (tidak di-commit)
 - `.env.example` - Template environment variables
 
 ## Performance

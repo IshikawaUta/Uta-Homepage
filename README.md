@@ -3,16 +3,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Fenrir-Framework-9b59b6.svg)](https://pypi.org/project/fenrir-framework/)
-[![Tests](https://img.shields.io/badge/Tests-127%20Passed-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
+[![Tests](https://img.shields.io/badge/Tests-194%20Passed-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions)
 [![CI](https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml/badge.svg)](https://github.com/IshikawaUta/Uta-Homepage/actions/workflows/ci.yml)
 [![Deployment](https://img.shields.io/badge/Deployed-Vercel-black.svg)](https://vercel.app)
 [![Performance](https://img.shields.io/badge/Performance-High--Speed%20ASGI-orange.svg)]()
 
-Portfolio website built with [Fenrir Framework](https://github.com/IshikawaUta/fenrir), featuring performance-first architecture with no database dependency.
+Portfolio website built with [Fenrir Framework](https://github.com/IshikawaUta/fenrir), featuring async MongoDB (Motor), admin CMS, and performance-first architecture.
 
-**Live Demo (Vercel):** [https://uta.eksashop.web.id](https://uta.eksashop.web.id)
-**Live Demo (Docker):** [https://folio.eksashop.web.id](https://folio.eksashop.web.id)
+**Live Demo:** [https://uta.eksashop.web.id](https://uta.eksashop.web.id)
 
 ## Features
 
@@ -20,15 +19,18 @@ Portfolio website built with [Fenrir Framework](https://github.com/IshikawaUta/f
 - Dark/Light theme with View Transitions API animation
 - Orbiting tech stack icons with SVG circles
 - Project Experience with client-side pagination
+- Admin CMS dashboard (login, CRUD projects)
+- MongoDB Atlas via async Motor driver
 - SEO optimized: JSON-LD, dynamic sitemap.xml, robots.txt, canonical URLs
-- Performance-first: GZip compression, CDN assets, minimal JS
-- No database - all data hardcoded in Python
+- Performance-first: GZip compression, CDN assets, minimal JS, 60s project cache
+- XSS sanitized with Bleach, CSRF protected, rate-limited login, session TTL
 - Dual deployment: Vercel + Docker with Cloudflare Tunnel
 
 ## Tech Stack
 
 - **Framework:** Fenrir Framework (Python ASGI)
 - **Server:** Uvicorn (Docker) / Vercel Serverless
+- **Database:** MongoDB Atlas (async via Motor)
 - **Styling:** Tailwind CSS (CDN)
 - **Fonts:** Geist Sans & Mono (Google Fonts)
 - **Deployment:** Vercel + Docker + Cloudflare Tunnel
@@ -57,10 +59,17 @@ uta-home/
 ├── templates/
 │   ├── base.html              # Base layout
 │   ├── index.html             # Main page
-│   └── error.html             # 404/500 error page
+│   ├── error.html             # 404/500 error page
+│   └── admin/
+│       ├── base.html          # Admin layout
+│       ├── dashboard.html     # Project list
+│       ├── login.html         # Admin login form
+│       └── projects/
+│           └── form.html      # Create/edit project
 ├── tests/
-│   ├── test_app.py            # 127 tests, 100% coverage
+│   ├── test_app.py            # 194 tests, 100% coverage
 │   └── conftest.py            # Pytest fixtures
+├── seed.py                    # One-time DB seeder
 ├── .coveragerc                # Coverage config
 ├── .dockerignore              # Docker build exclusions
 ├── .env.example               # Environment variables template
@@ -158,7 +167,7 @@ pytest tests/ -v --cov=. --cov-report=term-missing
 pytest tests/ -v --cov=. --cov-report=html
 ```
 
-Current coverage: **100%** (127 tests)
+Current coverage: **100%** (194 tests)
 
 ## Deployment
 
@@ -180,8 +189,14 @@ Current coverage: **100%** (127 tests)
 - `VERCEL` - Auto-set by Vercel (skip GZip + static mount)
 - `DOCKER` - Auto-set in Dockerfile (skip GZip, keep static mount)
 - `CLOUDFLARE_TUNNEL_TOKEN` - Only in `.env`, read by docker-compose
+- `MONGODB_URI` - MongoDB Atlas connection string
+- `ADMIN_USERNAME` - Admin login username (default: `admin`)
+- `ADMIN_PASSWORD` - Admin login password (default: `admin123`)
+- `SECRET_KEY` - Session signing key
 
 ## Customization
+
+### Profile data
 
 Edit the `PROFILE` dictionary in `app.py` to customize:
 
@@ -190,7 +205,14 @@ Edit the `PROFILE` dictionary in `app.py` to customize:
 - Tech stack icons
 - Social links
 - Achievement cards
-- Project experience cards (with pagination)
+
+### Projects (via Admin CMS)
+
+Access `/admin/login` (default credentials: `admin` / `admin123`) to:
+
+- Add, edit, delete projects
+- Description supports Markdown (converted to sanitized HTML)
+- Projects stored in MongoDB Atlas
 
 ## Performance
 
