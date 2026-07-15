@@ -4,9 +4,14 @@ Tests cover: routes, templates, error handlers, helpers, static files, and profi
 Target: 95%+ code coverage.
 """
 
+import os
 import json
+import re
+import time
 import pytest
-from app import app, PROFILE, build_jsonld
+from unittest.mock import patch, MagicMock, AsyncMock
+import app as app_module
+from app import app, PROFILE, build_jsonld, validate_project_form, build_project_doc, check_admin_password
 
 
 # =============================================================================
@@ -825,3 +830,777 @@ class TestViewTransitionsCSS:
         assert b"pagination-btn" in resp.content
         assert b"pagination-dot" in resp.content
         assert b"project-page" in resp.content
+
+
+# =============================================================================
+# Admin Routes Tests
+# =============================================================================
+
+class TestAdminRoutes:
+    """Test admin authentication and dashboard routes."""
+
+    @pytest.mark.anyio
+    async def test_login_page_returns_200(self, client):
+        resp = await client.get("/admin/login")
+        assert resp.status_code == 200
+        assert b"Admin Login" in resp.content
+
+    @pytest.mark.anyio
+    async def test_login_page_contains_form(self, client):
+        resp = await client.get("/admin/login")
+        assert b'name="username"' in resp.content
+        assert b'name="password"' in resp.content
+        assert b"Masuk" in resp.content
+
+    @pytest.mark.anyio
+    async def test_dashboard_redirects_to_login_when_unauthenticated(self, client):
+        resp = await client.get("/admin")
+        assert resp.status_code == 302
+        assert resp.headers.get("location") == "/admin/login"
+
+    @pytest.mark.anyio
+    async def test_login_with_wrong_credentials_shows_error(self, client):
+        resp = await client.post("/admin/login", data={"username": "wrong", "password": "wrong"})
+        assert resp.status_code == 200
+        assert b"Username atau password salah" in resp.content
+
+    @pytest.mark.anyio
+    async def test_login_with_correct_credentials_redirects(self, client):
+        resp = await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        assert resp.status_code == 302
+        assert resp.headers.get("location") == "/admin"
+
+    @pytest.mark.anyio
+    async def test_login_redirects_when_already_logged_in(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.get("/admin/login")
+        assert resp.status_code == 302
+        assert resp.headers.get("location") == "/admin"
+
+    @pytest.mark.anyio
+    async def test_dashboard_shows_mongo_disconnected(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.get("/admin")
+        assert resp.status_code == 200
+        assert b"MongoDB" in resp.content
+
+    @pytest.mark.anyio
+    async def test_logout_clears_session(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.get("/admin/logout")
+        assert resp.status_code == 302
+        assert resp.headers.get("location") == "/admin/login"
+
+    @pytest.mark.anyio
+    async def test_logout_requires_reauth(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        await client.get("/admin/logout")
+        resp = await client.get("/admin")
+        assert resp.status_code == 302
+        assert resp.headers.get("location") == "/admin/login"
+
+    @pytest.mark.anyio
+    async def test_project_new_redirects_when_unauthenticated(self, client):
+        resp = await client.get("/admin/projects/new")
+        assert resp.status_code == 302
+
+    @pytest.mark.anyio
+    async def test_project_edit_redirects_when_unauthenticated(self, client):
+        resp = await client.get("/admin/projects/abc123/edit")
+        assert resp.status_code == 302
+
+    @pytest.mark.anyio
+    async def test_project_create_redirects_when_unauthenticated(self, client):
+        resp = await client.post("/admin/projects", data={"title": "Test"})
+        assert resp.status_code == 302
+
+    @pytest.mark.anyio
+    async def test_project_update_redirects_when_unauthenticated(self, client):
+        resp = await client.post("/admin/projects/abc123", data={"title": "Test"})
+        assert resp.status_code == 302
+
+    @pytest.mark.anyio
+    async def test_project_delete_redirects_when_unauthenticated(self, client):
+        resp = await client.post("/admin/projects/abc123/delete")
+        assert resp.status_code == 302
+
+    # --- Authenticated + MongoDB disconnected ---
+
+    @pytest.mark.anyio
+    async def test_login_post_redirects_when_already_logged_in(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        assert resp.status_code == 302
+        assert resp.headers.get("location") == "/admin"
+
+    @pytest.mark.anyio
+    async def test_project_new_shows_error_when_mongo_disconnected(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.get("/admin/projects/new")
+        assert resp.status_code == 200
+        assert b"MongoDB tidak terhubung" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_create_shows_error_when_mongo_disconnected(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.post("/admin/projects", data={"title": "Test"})
+        assert resp.status_code == 200
+        assert b"MongoDB tidak terhubung" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_edit_shows_error_when_mongo_disconnected(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.get("/admin/projects/abc123/edit")
+        assert resp.status_code == 200
+        assert b"MongoDB tidak terhubung" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_update_shows_error_when_mongo_disconnected(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.post("/admin/projects/abc123", data={"title": "Test"})
+        assert resp.status_code == 200
+        assert b"MongoDB tidak terhubung" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_delete_shows_error_when_mongo_disconnected(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        resp = await client.post("/admin/projects/abc123/delete")
+        assert resp.status_code == 200
+        assert b"MongoDB tidak terhubung" in resp.content
+
+
+class TestAdminHelpers:
+    """Test admin helper functions (validate_project_form, build_project_doc, check_admin_password)."""
+
+    def test_validate_project_form_empty_title(self):
+        error = validate_project_form({"title": ""})
+        assert error == "Title wajib diisi"
+        error = validate_project_form({"title": "  "})
+        assert error == "Title wajib diisi"
+
+    def test_validate_project_form_valid_title(self):
+        error = validate_project_form({"title": "Test Project"})
+        assert error is None
+        error = validate_project_form({})
+        assert error == "Title wajib diisi"
+
+    def test_build_project_doc_creates_document(self):
+        form = {
+            "title": "Test Project",
+            "description": "A test project",
+            "github": "https://github.com/test/test",
+            "demo": "https://demo.test",
+            "badges": "",
+            "order": "1",
+        }
+        doc = build_project_doc(form)
+        assert doc["title"] == "Test Project"
+        assert doc["description"] == "<p>A test project</p>"
+        assert doc["description_raw"] == "A test project"
+        assert doc["github"] == "https://github.com/test/test"
+        assert doc["demo"] == "https://demo.test"
+        assert doc["badges"] == []
+        assert doc["order"] == 1
+        assert "created_at" in doc
+        assert "updated_at" in doc
+
+    def test_build_project_doc_with_badges(self):
+        form = {
+            "title": "Test",
+            "description": "",
+            "github": "",
+            "demo": "",
+            "baddes": '[{"href": "https://example.com", "img": "https://img.example.com", "alt": "Example"}]',
+            "order": "0",
+        }
+        doc = build_project_doc(form)
+        assert doc["title"] == "Test"
+        assert doc["description"] == ""
+        assert doc["badges"] == []
+        assert doc["order"] == 0
+
+    def test_build_project_doc_invalid_badges_json(self):
+        form = {
+            "title": "Test",
+            "description": "",
+            "github": "",
+            "demo": "",
+            "badges": "not valid json",
+            "order": "0",
+        }
+        doc = build_project_doc(form)
+        assert doc["badges"] == []
+
+    def test_build_project_doc_badges_not_list(self):
+        form = {
+            "title": "Test",
+            "description": "",
+            "github": "",
+            "demo": "",
+            "badges": '{"key": "value"}',
+            "order": "0",
+        }
+        doc = build_project_doc(form)
+        assert doc["badges"] == []
+
+    def test_build_project_doc_valid_badges(self):
+        form = {
+            "title": "Test",
+            "description": "",
+            "github": "",
+            "demo": "",
+            "badges": json.dumps([
+                {"href": "https://example.com", "img": "https://img.example.com", "alt": "Example"}
+            ]),
+            "order": "5",
+        }
+        doc = build_project_doc(form)
+        assert len(doc["badges"]) == 1
+        assert doc["badges"][0]["href"] == "https://example.com"
+        assert doc["order"] == 5
+
+    def test_check_admin_password_correct(self):
+        assert check_admin_password("admin123") is True
+
+    def test_check_admin_password_wrong(self):
+        assert check_admin_password("wrongpassword") is False
+
+    def test_check_admin_password_fallback_when_hash_none(self):
+        saved = app_module._admin_password_hash
+        app_module._admin_password_hash = None
+        with patch.object(app_module, '_hash_admin_password', return_value=None):
+            assert app_module.check_admin_password("admin123") is True
+            assert app_module.check_admin_password("wrong") is False
+        app_module._admin_password_hash = saved
+
+    def test_check_admin_password_fallback_on_bcrypt_error(self):
+        saved = app_module._admin_password_hash
+        app_module._admin_password_hash = None
+        with patch.object(app_module, '_hash_admin_password', return_value=b"$2b$12$fakehash"):
+            with patch('bcrypt.checkpw', side_effect=Exception("mock error")):
+                assert app_module.check_admin_password("admin123") is True
+        app_module._admin_password_hash = saved
+
+
+class TestMongoHelpers:
+    """Test mongo_is_connected and _db_or_fail edge cases."""
+
+    @pytest.mark.anyio
+    async def test_mongo_is_connected_with_cached_db(self):
+        saved = app_module.mongo_db
+        app_module.mongo_db = MagicMock()
+        try:
+            result = await app_module.mongo_is_connected()
+            assert result is True
+        finally:
+            app_module.mongo_db = saved
+
+    @pytest.mark.anyio
+    async def test_mongo_is_connected_no_db(self):
+        saved = app_module.mongo_db
+        app_module.mongo_db = None
+        saved_uri = os.environ.get("MONGODB_URI")
+        if "MONGODB_URI" in os.environ:
+            del os.environ["MONGODB_URI"]
+        try:
+            result = await app_module.mongo_is_connected()
+            assert result is False
+        finally:
+            if saved_uri is not None:
+                os.environ["MONGODB_URI"] = saved_uri
+            app_module.mongo_db = saved
+
+    @pytest.mark.anyio
+    async def test_db_or_fail_raises_when_no_db(self):
+        saved = app_module.mongo_db
+        app_module.mongo_db = None
+        saved_uri = os.environ.get("MONGODB_URI")
+        if "MONGODB_URI" in os.environ:
+            del os.environ["MONGODB_URI"]
+        try:
+            with pytest.raises(RuntimeError, match="MongoDB tidak terhubung"):
+                await app_module._db_or_fail()
+        finally:
+            if saved_uri is not None:
+                os.environ["MONGODB_URI"] = saved_uri
+            app_module.mongo_db = saved
+
+
+class TestFetchProjects:
+    """Test fetch_projects with mocked MongoDB."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_project_cache(self):
+        app_module._projects_cache = None
+        app_module._projects_cache_ts = 0.0
+
+    @pytest.mark.anyio
+    async def test_fetch_projects_fallback_when_no_mongo(self):
+        result = await app_module.fetch_projects()
+        assert result == PROFILE["projects"]
+
+    def _make_mock_cursor(self, data):
+        cursor = MagicMock()
+        cursor.to_list = AsyncMock(return_value=data)
+        cursor.sort.return_value = cursor
+        return cursor
+
+    @pytest.mark.anyio
+    async def test_fetch_projects_from_mongo(self):
+        mock_projects = [{"title": "Mongo Project", "badges": [], "description": "From DB", "github": "", "demo": ""}]
+        mock_db = MagicMock()
+        mock_db.projects.find.return_value = self._make_mock_cursor(mock_projects)
+        with patch.object(app_module, 'get_mongo_db', new=AsyncMock(return_value=mock_db)):
+            result = await app_module.fetch_projects()
+        assert len(result) == 1
+        assert result[0]["title"] == "Mongo Project"
+
+    @pytest.mark.anyio
+    async def test_fetch_projects_mongo_empty_fallback(self):
+        mock_cursor = MagicMock()
+        mock_cursor.to_list = AsyncMock(side_effect=Exception("DB error"))
+        mock_cursor.sort.return_value = mock_cursor
+        mock_db = MagicMock()
+        mock_db.projects.find.return_value = mock_cursor
+        with patch.object(app_module, 'get_mongo_db', new=AsyncMock(return_value=mock_db)):
+            result = await app_module.fetch_projects()
+        assert result == PROFILE["projects"]
+
+    @pytest.mark.anyio
+    async def test_fetch_projects_mongo_no_results_fallback(self):
+        mock_db = MagicMock()
+        mock_db.projects.find.return_value = self._make_mock_cursor([])
+        with patch.object(app_module, 'get_mongo_db', new=AsyncMock(return_value=mock_db)):
+            result = await app_module.fetch_projects()
+        assert result == PROFILE["projects"]
+
+    @pytest.mark.anyio
+    async def test_fetch_projects_cache_hit(self):
+        cached = [{"title": "Cached", "badges": [], "description": "Cached desc", "github": "", "demo": ""}]
+        app_module._projects_cache = cached
+        app_module._projects_cache_ts = time.time()
+        result = await app_module.fetch_projects()
+        assert result is cached
+        assert result[0]["title"] == "Cached"
+
+
+class TestSessionTimeout:
+    """Test admin session timeout -> redirect to login with expired param."""
+
+    @pytest.mark.anyio
+    async def test_admin_session_timeout_redirects(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        import time as _time
+        with patch.object(_time, 'time', return_value=9999999999):
+            resp = await client.get("/admin")
+        assert resp.status_code == 302
+        assert "expired=1" in resp.headers.get("location", "")
+
+
+class TestRateLimit:
+    """Test login rate limiting."""
+
+    @pytest.mark.anyio
+    async def test_login_rate_limit_exceeded(self, client):
+        for i in range(10):
+            resp = await client.post("/admin/login", data={"username": "x", "password": "x"})
+            assert resp.status_code == 200
+        resp = await client.post("/admin/login", data={"username": "x", "password": "x"})
+        assert resp.status_code == 200
+        assert b"Terlalu banyak percobaan" in resp.content
+
+
+class TestCsrfProtection:
+    """Test CSRF validation in admin routes."""
+
+    VALID_ID = "507f1f77bcf86cd799439011"
+
+    @pytest.fixture(autouse=True)
+    def enable_csrf(self):
+        saved = app_module.app.config.get("DISABLE_CSRF")
+        app_module.app.config["DISABLE_CSRF"] = False
+        yield
+        if saved is not None:
+            app_module.app.config["DISABLE_CSRF"] = saved
+        else:
+            app_module.app.config.pop("DISABLE_CSRF", None)
+
+    def _setup_mock(self):
+        mock_cursor = MagicMock()
+        mock_cursor.to_list = AsyncMock(return_value=[{"_id": self.VALID_ID, "title": "Test", "badges": [], "description": "Desc", "github": "", "demo": "", "order": 1}])
+        mock_cursor.sort.return_value = mock_cursor
+        mock_db = MagicMock()
+        mock_db.projects.find.return_value = mock_cursor
+        mock_db.projects.find_one = AsyncMock(return_value={"_id": self.VALID_ID, "title": "Test", "badges": [], "description": "Desc", "github": "", "demo": "", "order": 1})
+        mock_db.projects.insert_one = AsyncMock()
+        mock_db.projects.update_one = AsyncMock()
+        mock_db.projects.delete_one = AsyncMock()
+        db_p = patch.object(app_module, 'get_mongo_db', new=AsyncMock(return_value=mock_db))
+        conn_p = patch.object(app_module, 'mongo_is_connected', new=AsyncMock(return_value=True))
+        return db_p, conn_p
+
+    async def _login_with_csrf(self, client):
+        resp = await client.get("/admin/login")
+        text = resp.content.decode()
+        match = re.search(r'name="_csrf_token"\s+value="([^"]+)"', text)
+        assert match, "CSRF token not found in login page"
+        token = match.group(1)
+        resp = await client.post("/admin/login", data={
+            "username": "admin", "password": "admin123", "_csrf_token": token
+        })
+        assert resp.status_code == 302
+
+    @pytest.mark.anyio
+    async def test_login_without_csrf_fails(self, client):
+        resp = await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        assert resp.status_code == 200
+        assert b"Session expired" in resp.content
+
+    @pytest.mark.anyio
+    async def test_login_with_wrong_csrf_fails(self, client):
+        await client.get("/admin/login")
+        resp = await client.post("/admin/login", data={
+            "username": "admin", "password": "admin123", "_csrf_token": "wrong"
+        })
+        assert resp.status_code == 200
+        assert b"Session expired" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_create_csrf_fails(self, client):
+        await self._login_with_csrf(client)
+        db_p, conn_p = self._setup_mock()
+        with db_p, conn_p:
+            resp = await client.post("/admin/projects", data={"title": "Test"})
+        assert resp.status_code == 200
+        assert b"CSRF token invalid" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_update_csrf_fails(self, client):
+        await self._login_with_csrf(client)
+        db_p, conn_p = self._setup_mock()
+        with db_p, conn_p:
+            resp = await client.post(f"/admin/projects/{self.VALID_ID}", data={"title": "Test"})
+        assert resp.status_code == 200
+        assert b"CSRF token invalid" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_delete_csrf_fails(self, client):
+        await self._login_with_csrf(client)
+        db_p, conn_p = self._setup_mock()
+        with db_p, conn_p:
+            resp = await client.post(f"/admin/projects/{self.VALID_ID}/delete")
+        assert resp.status_code == 200
+        assert b"CSRF token invalid" in resp.content
+
+
+class TestAdminRoutesWithMockMongo:
+    """Test admin CRUD routes with mocked MongoDB connection."""
+
+    VALID_ID = "507f1f77bcf86cd799439011"
+    MOCK_PROJECTS = [
+        {"_id": VALID_ID, "title": "Existing Project", "badges": [], "description": "Desc", "github": "https://github.com/test", "demo": "", "order": 1, "created_at": None, "updated_at": None},
+    ]
+
+    def _setup_mock_db(self, projects=None):
+        data = projects or [dict(p) for p in self.MOCK_PROJECTS]
+        mock_cursor = MagicMock()
+        mock_cursor.to_list = AsyncMock(return_value=data)
+        mock_cursor.sort.return_value = mock_cursor
+        mock_db = MagicMock()
+        mock_db.projects.find.return_value = mock_cursor
+        mock_db.projects.find_one = AsyncMock(return_value=data[0] if data else None)
+        mock_db.projects.insert_one = AsyncMock()
+        mock_db.projects.update_one = AsyncMock()
+        mock_db.projects.delete_one = AsyncMock()
+        db_patcher = patch.object(app_module, 'get_mongo_db', new=AsyncMock(return_value=mock_db))
+        conn_patcher = patch.object(app_module, 'mongo_is_connected', new=AsyncMock(return_value=True))
+        return db_patcher, conn_patcher, mock_db
+
+    @pytest.mark.anyio
+    async def test_dashboard_with_mongo_shows_projects(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, _ = self._setup_mock_db()
+        with db_p, conn_p:
+            resp = await client.get("/admin")
+        assert resp.status_code == 200
+        assert b"Existing Project" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_new_form_renders(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, _ = self._setup_mock_db()
+        with db_p, conn_p:
+            resp = await client.get("/admin/projects/new")
+        assert resp.status_code == 200
+        assert b"Tambah Project" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_create_valid(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        with db_p, conn_p:
+            resp = await client.post("/admin/projects", data={
+                "title": "New Project",
+                "description": "New desc",
+                "github": "",
+                "demo": "",
+                "badges": "",
+                "order": "0",
+            })
+        assert resp.status_code == 302
+        assert mock_db.projects.insert_one.called
+        doc = mock_db.projects.insert_one.call_args[0][0]
+        assert doc["title"] == "New Project"
+
+    @pytest.mark.anyio
+    async def test_project_create_invalid_shows_error(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, _ = self._setup_mock_db()
+        with db_p, conn_p:
+            resp = await client.post("/admin/projects", data={"title": ""})
+        assert resp.status_code == 200
+        assert b"Title wajib diisi" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_edit_found(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        project = {"_id": self.VALID_ID, "title": "Edit Me", "badges": [], "description": "Edit desc", "github": "", "demo": "", "order": 1}
+        db_p, conn_p, mock_db = self._setup_mock_db(projects=[project])
+        mock_db.projects.find_one.return_value = project
+        with db_p, conn_p:
+            resp = await client.get(f"/admin/projects/{self.VALID_ID}/edit")
+        assert resp.status_code == 200
+        assert b"Edit Me" in resp.content
+        assert b"Simpan" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_edit_not_found(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db(projects=[])
+        mock_db.projects.find_one.return_value = None
+        with db_p, conn_p:
+            resp = await client.get(f"/admin/projects/{self.VALID_ID}/edit")
+        assert resp.status_code == 200
+        assert b"Project tidak ditemukan" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_update_valid(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        with db_p, conn_p:
+            resp = await client.post(f"/admin/projects/{self.VALID_ID}", data={
+                "title": "Updated Title",
+                "description": "Updated",
+                "github": "",
+                "demo": "",
+                "badges": "",
+                "order": "2",
+            })
+        assert resp.status_code == 302
+        assert mock_db.projects.update_one.called
+        update_doc = mock_db.projects.update_one.call_args[0][1]["$set"]
+        assert update_doc["title"] == "Updated Title"
+
+    @pytest.mark.anyio
+    async def test_project_update_invalid_title(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, _ = self._setup_mock_db()
+        with db_p, conn_p:
+            resp = await client.post(f"/admin/projects/{self.VALID_ID}", data={"title": ""})
+        assert resp.status_code == 200
+        assert b"Title wajib diisi" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_delete(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        with db_p, conn_p:
+            resp = await client.post(f"/admin/projects/{self.VALID_ID}/delete")
+        assert resp.status_code == 302
+        assert mock_db.projects.delete_one.called
+
+    @pytest.mark.anyio
+    async def test_dashboard_mongo_exception(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        mock_db.projects.find.side_effect = Exception("DB error")
+        with db_p, conn_p:
+            resp = await client.get("/admin")
+        assert resp.status_code == 200
+        assert b"Project Experience" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_create_exception(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        mock_db.projects.insert_one.side_effect = Exception("Insert error")
+        with db_p, conn_p:
+            resp = await client.post("/admin/projects", data={
+                "title": "Fail", "description": "", "github": "", "demo": "", "badges": "", "order": "0"
+            })
+        assert resp.status_code == 200
+        assert b"Gagal menyimpan" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_edit_exception(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        mock_db.projects.find_one.side_effect = Exception("Find error")
+        with db_p, conn_p:
+            resp = await client.get(f"/admin/projects/{self.VALID_ID}/edit")
+        assert resp.status_code == 200
+        assert b"Error" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_update_exception(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        mock_db.projects.update_one.side_effect = Exception("Update error")
+        with db_p, conn_p:
+            resp = await client.post(f"/admin/projects/{self.VALID_ID}", data={
+                "title": "Update", "description": "", "github": "", "demo": "", "badges": "", "order": "0"
+            })
+        assert resp.status_code == 200
+        assert b"Gagal update" in resp.content
+
+    @pytest.mark.anyio
+    async def test_project_delete_exception(self, client):
+        await client.post("/admin/login", data={"username": "admin", "password": "admin123"})
+        db_p, conn_p, mock_db = self._setup_mock_db()
+        mock_db.projects.delete_one.side_effect = Exception("Delete error")
+        with db_p, conn_p:
+            resp = await client.post(f"/admin/projects/{self.VALID_ID}/delete")
+        assert resp.status_code == 200
+        assert b"Gagal hapus" in resp.content
+
+
+class TestBcryptExceptionPaths:
+    """Test bcrypt exception/fallback paths that need mocking."""
+
+    def test_hash_admin_password_exception(self):
+        saved = app_module._admin_password_hash
+        app_module._admin_password_hash = None
+        with patch('bcrypt.hashpw', side_effect=Exception("mock error")):
+            result = app_module._hash_admin_password()
+            assert result is None
+        app_module._admin_password_hash = saved
+
+
+class TestGetMongoDb:
+    """Test get_mongo_db edge cases."""
+
+    @pytest.mark.anyio
+    async def test_get_mongo_db_returns_cached_value(self):
+        saved = app_module.mongo_db
+        app_module.mongo_db = MagicMock()
+        try:
+            db = await app_module.get_mongo_db()
+            assert db is not None
+        finally:
+            app_module.mongo_db = saved
+
+    @pytest.mark.anyio
+    async def test_get_mongo_db_no_uri(self):
+        saved_uri = os.environ.get("MONGODB_URI")
+        if "MONGODB_URI" in os.environ:
+            del os.environ["MONGODB_URI"]
+        saved_db = app_module.mongo_db
+        app_module.mongo_db = None
+        try:
+            db = await app_module.get_mongo_db()
+            assert db is None
+        finally:
+            if saved_uri is not None:
+                os.environ["MONGODB_URI"] = saved_uri
+            app_module.mongo_db = saved_db
+
+    @pytest.mark.anyio
+    async def test_get_mongo_db_connection_success(self):
+        saved_uri = os.environ.get("MONGODB_URI")
+        os.environ["MONGODB_URI"] = "mongodb://localhost:27017/test"
+        saved_db = app_module.mongo_db
+        app_module.mongo_db = None
+        with patch.object(app_module, 'AsyncIOMotorClient') as MockClient:
+            mock_client = MagicMock()
+            mock_client.admin.command = AsyncMock()
+            MockClient.return_value = mock_client
+            try:
+                db = await app_module.get_mongo_db()
+                assert db is not None
+            finally:
+                if saved_uri is not None:
+                    os.environ["MONGODB_URI"] = saved_uri
+                else:
+                    del os.environ["MONGODB_URI"]
+                app_module.mongo_db = saved_db
+
+    @pytest.mark.anyio
+    async def test_get_mongo_db_connection_error(self):
+        saved_uri = os.environ.get("MONGODB_URI")
+        os.environ["MONGODB_URI"] = "mongodb://localhost:27017/test"
+        saved_db = app_module.mongo_db
+        app_module.mongo_db = None
+        with patch.object(app_module, 'AsyncIOMotorClient') as MockClient:
+            MockClient.side_effect = Exception("Connection failed")
+            try:
+                db = await app_module.get_mongo_db()
+                assert db is None
+            finally:
+                if saved_uri is not None:
+                    os.environ["MONGODB_URI"] = saved_uri
+                else:
+                    del os.environ["MONGODB_URI"]
+                app_module.mongo_db = saved_db
+
+
+class TestDotenvImportError:
+    """Test the except ImportError path for python-dotenv."""
+
+    def test_dotenv_not_installed_fallback(self):
+        import sys
+        import builtins
+        import importlib
+
+        saved_app = sys.modules.pop('app', None)
+        saved_dotenv = sys.modules.pop('dotenv', None)
+
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == 'dotenv':
+                raise ImportError("Simulated missing dotenv")
+            return original_import(name, *args, **kwargs)
+
+        builtins.__import__ = mock_import
+        try:
+            import app as reloaded
+            importlib.reload(reloaded)
+            assert hasattr(reloaded, 'app')
+            assert hasattr(reloaded, 'PROFILE')
+        finally:
+            builtins.__import__ = original_import
+            for mod_name, mod in [('dotenv', saved_dotenv), ('app', saved_app)]:
+                if mod is not None:
+                    sys.modules[mod_name] = mod
+                elif mod_name in sys.modules:
+                    del sys.modules[mod_name]
+
+    @pytest.mark.anyio
+    async def test_connection_with_reloaded_app(self):
+        saved_uri = os.environ.get("MONGODB_URI")
+        os.environ["MONGODB_URI"] = "mongodb://localhost:27017/test"
+        saved_db = app_module.mongo_db
+        app_module.mongo_db = None
+        with patch.object(app_module, 'AsyncIOMotorClient') as MockClient:
+            mock_client = MagicMock()
+            mock_client.admin.command = AsyncMock()
+            MockClient.return_value = mock_client
+            try:
+                db = await app_module.get_mongo_db()
+                assert db is not None
+            finally:
+                if saved_uri is not None:
+                    os.environ["MONGODB_URI"] = saved_uri
+                else:
+                    del os.environ["MONGODB_URI"]
+                app_module.mongo_db = saved_db
