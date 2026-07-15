@@ -1,26 +1,52 @@
-# =============================================================================
-# IshikawaUta Portfolio - Fenrir Web Framework
-# =============================================================================
-# Entry point for the portfolio website. All profile data is hardcoded
-# (no database). Built with Fenrir Framework + Asteri ASGI server.
-#
-# Local:  fenrir run app:app --host 0.0.0.0 --port 8000
-# Dev:    fenrir run app:app --dev
-# Vercel: Automatic (api/index.py imports this app)
-# =============================================================================
-
 import os
 import json
-from fenrir import Fenrir, render_template
+import time
+import hmac
+import secrets
+import logging
+from datetime import datetime, timezone
 
-# ---------------------------------------------------------------------------
-# App initialization
-# ---------------------------------------------------------------------------
+from markdown import markdown as _md_to_html
+from bson.objectid import ObjectId
+import bcrypt as _bcrypt
+import bleach
+from motor.motor_asyncio import AsyncIOMotorClient
+from fenrir import Fenrir, render_template, session
+from fenrir.response import RedirectResponse
+
+logger = logging.getLogger(__name__)
+
+BLEACH_ALLOWED_TAGS = [
+    "p", "br", "b", "i", "em", "strong", "a", "ul", "ol", "li",
+    "h1", "h2", "h3", "h4", "h5", "h6", "code", "pre", "blockquote",
+    "hr", "table", "thead", "tbody", "tr", "th", "td", "img",
+    "span", "div",
+]
+BLEACH_ALLOWED_ATTRS = {
+    "a": ["href", "title", "rel", "target"],
+    "img": ["src", "alt", "title", "width", "height", "loading"],
+    "code": ["class"],
+    "pre": ["class"],
+    "span": ["class"],
+    "div": ["class"],
+    "td": ["colspan", "rowspan"],
+    "th": ["colspan", "rowspan"],
+}
+BLEACH_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
+
 app = Fenrir(
     title="IshikawaUta Portfolio",
     version="1.0.0",
     template_folder="templates",
 )
+
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY", "uta-home-secret-key-change-in-production"
+)
+_is_secure = bool(os.environ.get("VERCEL")) or bool(os.environ.get("DOCKER"))
+app.config["SESSION_COOKIE_SECURE"] = _is_secure
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # GZip compression (skip in Vercel/Docker - handled upstream)
 if not os.environ.get("VERCEL") and not os.environ.get("DOCKER"):
@@ -33,22 +59,58 @@ if not os.environ.get("VERCEL"):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")))
 
+# Load .env file in development
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # ---------------------------------------------------------------------------
-# Profile data - hardcoded, no database needed
+# MongoDB connection
+# ---------------------------------------------------------------------------
+mongo_client = None
+mongo_db = None
+
+async def get_mongo_db():
+    global mongo_client, mongo_db
+    if mongo_db is not None:
+        return mongo_db
+    uri = os.environ.get("MONGODB_URI")
+    if not uri:
+        return None
+    try:
+        mongo_client = AsyncIOMotorClient(uri, serverSelectionTimeoutMS=5000)
+        await mongo_client.admin.command("ping")
+        mongo_db = mongo_client.get_database("uta-home")
+        return mongo_db
+    except Exception:
+        return None
+
+
+async def _db_or_fail():
+    db = await get_mongo_db()
+    if db is None:
+        raise RuntimeError("MongoDB tidak terhubung")
+    return db
+
+async def mongo_is_connected():
+    return (await get_mongo_db()) is not None
+
+# ---------------------------------------------------------------------------
+# Profile data - hardcoded fallback
 # ---------------------------------------------------------------------------
 PROFILE = {
     "name": "Eka Saputra",
     "alias": "ishikawauta",
     "tagline": "Full Stack Developer / Software Developer / Open Source Enthusiast",
-    "codeFile": "app.py",                       # Filename shown in code preview
+    "codeFile": "app.py",
     "avatarUrl": "https://avatars.githubusercontent.com/u/79686853?v=4",
     "copyright": "\u00a9 2026-present @IshikawaUta. All rights reserved.",
-    # About paragraphs (rendered as <p> tags in About section)
     "about": [
         "Full Stack Developer passionate about open source. Building various projects from web frameworks (Fenrir) to inventory management systems.",
         "Creator of Fenrir Framework - Python ASGI web framework, Asteri Server - Python ASGI web server, and various other open source projects.",
     ],
-    # Timeline tags displayed under About Me section
     "tags": [
         {"year": "'21", "label": "Open Source"},
         {"year": "'22", "label": "Python"},
@@ -57,25 +119,21 @@ PROFILE = {
         {"year": "'25", "label": "Flask"},
         {"year": "'26", "label": "More to come..."},
     ],
-    # Tech stack icons for orbiting circles (uses skillicons.dev API)
     "techStack": {
-        "innerIcons": ["python", "js", "ruby", "php", "html"],      # Inner orbit (smaller)
-        "outerIcons": ["rails", "django", "next", "flask", "nodejs", "laravel", "tailwind", "css", "git"],  # Outer orbit (larger)
+        "innerIcons": ["python", "js", "ruby", "php", "html"],
+        "outerIcons": ["rails", "django", "next", "flask", "nodejs", "laravel", "tailwind", "css", "git"],
     },
-    # Social links rendered in header navigation
     "socialLinks": [
         {"label": "GitHub", "href": "https://github.com/IshikawaUta"},
         {"label": "Blog", "href": "https://ishikawauta.github.io/my-blogs"},
         {"label": "Mail", "href": "mailto:komikers09@gmail.com"},
     ],
-    # Achievement cards shown in right column
     "achievements": [
         {"title": "Fenrir Framework", "description": "High-performance Python ASGI web framework", "year": "1.5k Stars"},
         {"title": "Asteri Server", "description": "High-performance Python web server", "year": "1.2k Stars"},
         {"title": "Ofa Framework", "description": "Templating Ruby web framework", "year": "1k Stars"},
         {"title": "Open Source", "description": "151+ repositories and counting", "year": "Builder"},
     ],
-    # Project experience cards with pagination
     "projects": [
         {
             "title": "Fenrir Web Framework",
@@ -169,19 +227,104 @@ def build_jsonld(profile, site_url):
     return json.dumps(data)
 
 # ---------------------------------------------------------------------------
-# Routes
+# Helpers
+# ---------------------------------------------------------------------------
+
+_projects_cache = None
+_projects_cache_ts = 0.0
+
+async def fetch_projects():
+    global _projects_cache, _projects_cache_ts
+    now = time.time()
+    if _projects_cache is not None and (now - _projects_cache_ts) < 60:
+        return _projects_cache
+    db = await get_mongo_db()
+    if db is not None:
+        try:
+            cursor = db.projects.find().sort("order", 1)
+            projects = await cursor.to_list(None)
+            if projects:
+                result = []
+                for p in projects:
+                    result.append({
+                        "title": p.get("title", ""),
+                        "badges": p.get("badges", []),
+                        "description": bleach.clean(p.get("description", ""), tags=BLEACH_ALLOWED_TAGS, attributes=BLEACH_ALLOWED_ATTRS, protocols=BLEACH_ALLOWED_PROTOCOLS, strip=True),
+                        "github": p.get("github", ""),
+                        "demo": p.get("demo", ""),
+                    })
+                _projects_cache = result
+                _projects_cache_ts = now
+                return result
+        except Exception:
+            logger.exception("Gagal fetch projects dari MongoDB")
+    return PROFILE["projects"]
+
+
+SESSION_TTL = 1800
+
+def admin_required(handler):
+    """Decorator to protect admin routes with session timeout."""
+    async def wrapper(req, *args, **kwargs):
+        if not session.get("logged_in"):
+            return RedirectResponse("/admin/login", status=302)
+        login_at = session.get("_login_at", 0)
+        if time.time() - login_at > SESSION_TTL:
+            session.clear()
+            return RedirectResponse("/admin/login?expired=1", status=302)
+        path_params = getattr(req, "path_params", {})
+        merged = {**path_params, **kwargs}
+        return await handler(req, *args, **merged)
+    return wrapper
+
+
+def get_admin_credentials():
+    return (
+        os.environ.get("ADMIN_USERNAME", "admin"),
+        os.environ.get("ADMIN_PASSWORD", "admin123"),
+    )
+
+
+_admin_password_hash = None
+
+def _hash_admin_password():
+    global _admin_password_hash
+    if _admin_password_hash is not None:
+        return _admin_password_hash
+    try:
+        import bcrypt as _bcrypt
+        password = get_admin_credentials()[1]
+        _admin_password_hash = _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt())
+    except Exception:
+        _admin_password_hash = None
+    return _admin_password_hash
+
+
+def check_admin_password(password):
+    pwhash = _hash_admin_password()
+    if pwhash is None:
+        return get_admin_credentials()[1] == password
+    try:
+        import bcrypt as _bcrypt
+        return _bcrypt.checkpw(password.encode("utf-8"), pwhash)
+    except Exception:
+        return get_admin_credentials()[1] == password
+
+# ---------------------------------------------------------------------------
+# Public routes
 # ---------------------------------------------------------------------------
 
 @app.get("/")
 async def index(req):
     """Main page - renders index.html with profile data, canonical URL, and JSON-LD."""
-    # Detect scheme from proxy headers (for production behind reverse proxy)
     scheme = "https" if req.headers.get("x-forwarded-proto") == "https" else "http"
     host = req.headers.get("host") or "127.0.0.1:8000"
     site_url = f"{scheme}://{host}/"
     canonical_url = site_url
     json_ld = build_jsonld(PROFILE, site_url)
-    return render_template("index.html", profile=PROFILE, canonical_url=canonical_url, json_ld=json_ld)
+    profile = dict(PROFILE)
+    profile["projects"] = await fetch_projects()
+    return render_template("index.html", profile=profile, canonical_url=canonical_url, json_ld=json_ld)
 
 
 @app.get("/favicon.ico")
@@ -221,13 +364,235 @@ async def sitemap(req):
 """
     return (xml, 200, {"Content-Type": "application/xml"})
 
+# ---------------------------------------------------------------------------
+# Admin routes
+# ---------------------------------------------------------------------------
+
+MAX_LOGIN_ATTEMPTS = 10
+LOGIN_WINDOW = 900
+
+def _check_login_rate_limit():
+    attempts = session.get("_login_attempts", 0)
+    window_start = session.get("_login_window", 0)
+    now = time.time()
+    if now - window_start > LOGIN_WINDOW:
+        session["_login_attempts"] = 0
+        session["_login_window"] = now
+        return True
+    return attempts < MAX_LOGIN_ATTEMPTS
+
+
+def _generate_csrf():
+    token = secrets.token_hex(32)
+    session["_csrf_token"] = token
+    return token
+
+
+def _validate_csrf(form):
+    if app.config.get("DISABLE_CSRF"):
+        return True
+    expected = session.pop("_csrf_token", None)
+    if expected is None:
+        return False
+    return hmac.compare_digest(str(form.get("_csrf_token", "")), expected)
+
+
+@app.get("/admin/login")
+async def admin_login_get(req):
+    if session.get("logged_in"):
+        return RedirectResponse("/admin", status=302)
+    _generate_csrf()
+    return render_template("admin/login.html", csrf_token=session["_csrf_token"])
+
+
+@app.post("/admin/login")
+async def admin_login_post(req):
+    if session.get("logged_in"):
+        return RedirectResponse("/admin", status=302)
+    form = await req.form()
+    if not _validate_csrf(form):
+        return render_template("admin/login.html", error="Session expired, coba lagi", csrf_token=_generate_csrf())
+    if not _check_login_rate_limit():
+        return render_template("admin/login.html", error="Terlalu banyak percobaan. Tunggu 15 menit.", csrf_token=_generate_csrf())
+    username = form.get("username", "")
+    password = form.get("password", "")
+    expected_user, expected_pass = get_admin_credentials()
+    if hmac.compare_digest(username, expected_user) and check_admin_password(password):
+        session["logged_in"] = True
+        session["_login_at"] = time.time()
+        session.pop("_login_attempts", None)
+        session.pop("_login_window", None)
+        return RedirectResponse("/admin", status=302)
+    session["_login_attempts"] = session.get("_login_attempts", 0) + 1
+    if session["_login_attempts"] == 1:
+        session["_login_window"] = time.time()
+    return render_template("admin/login.html", error="Username atau password salah", csrf_token=_generate_csrf())
+
+
+@app.get("/admin/logout")
+async def admin_logout(req):
+    session.pop("logged_in", None)
+    return RedirectResponse("/admin/login", status=302)
+
+
+@app.get("/admin")
+@admin_required
+async def admin_dashboard(req):
+    connected = await mongo_is_connected()
+    projects = []
+    if connected:
+        try:
+            db = await _db_or_fail()
+            cursor = db.projects.find().sort("order", 1)
+            projects = await cursor.to_list(None)
+            for p in projects:
+                p["_id"] = str(p["_id"])
+                p.pop("created_at", None)
+                p.pop("updated_at", None)
+        except Exception:
+            connected = False
+    return render_template(
+        "admin/dashboard.html",
+        mongo_connected=connected,
+        projects=projects,
+        csrf_token=_generate_csrf(),
+    )
+
+
+@app.get("/admin/projects/new")
+@admin_required
+async def admin_project_new_get(req):
+    if not await mongo_is_connected():
+        return render_template("admin/dashboard.html", mongo_connected=False, projects=[], error="MongoDB tidak terhubung", csrf_token=_generate_csrf())
+    return render_template("admin/projects/form.html", project=None, badges_json="", csrf_token=_generate_csrf())
+
+
+@app.post("/admin/projects")
+@admin_required
+async def admin_project_create(req):
+    if not await mongo_is_connected():
+        return render_template("admin/dashboard.html", mongo_connected=False, projects=[], error="MongoDB tidak terhubung", csrf_token=_generate_csrf())
+    form = await req.form()
+    if not _validate_csrf(form):
+        return render_template("admin/dashboard.html", mongo_connected=True, projects=[], error="CSRF token invalid", csrf_token=_generate_csrf())
+    error = validate_project_form(form)
+    if error:
+        return render_template("admin/projects/form.html", project=None, error=error, badges_json=form.get("badges", ""), csrf_token=_generate_csrf())
+    try:
+        db = await _db_or_fail()
+        doc = build_project_doc(form)
+        await db.projects.insert_one(doc)
+        _projects_cache = None
+        return RedirectResponse("/admin?success=Project berhasil ditambahkan", status=302)
+    except Exception as e:
+        return render_template("admin/projects/form.html", project=None, error=f"Gagal menyimpan: {str(e)}", badges_json=form.get("badges", ""), csrf_token=_generate_csrf())
+
+
+@app.get("/admin/projects/<id>/edit")
+@admin_required
+async def admin_project_edit_get(req, id):
+    if not await mongo_is_connected():
+        return render_template("admin/dashboard.html", mongo_connected=False, projects=[], error="MongoDB tidak terhubung", csrf_token=_generate_csrf())
+    try:
+        db = await _db_or_fail()
+        project = await db.projects.find_one({"_id": ObjectId(id)})
+        if not project:
+            return render_template("admin/dashboard.html", mongo_connected=True, projects=[], error="Project tidak ditemukan", csrf_token=_generate_csrf())
+        project["_id"] = str(project["_id"])
+        project["description"] = project.get("description_raw") or project.get("description", "")
+        badges_json = json.dumps(project.get("badges", []), indent=2)
+        return render_template("admin/projects/form.html", project=project, badges_json=badges_json, csrf_token=_generate_csrf())
+    except Exception as e:
+        return render_template("admin/dashboard.html", mongo_connected=True, projects=[], error=f"Error: {str(e)}", csrf_token=_generate_csrf())
+
+
+@app.post("/admin/projects/<id>")
+@admin_required
+async def admin_project_update(req, id):
+    if not await mongo_is_connected():
+        return render_template("admin/dashboard.html", mongo_connected=False, projects=[], error="MongoDB tidak terhubung", csrf_token=_generate_csrf())
+    form = await req.form()
+    if not _validate_csrf(form):
+        return render_template("admin/dashboard.html", mongo_connected=True, projects=[], error="CSRF token invalid", csrf_token=_generate_csrf())
+    error = validate_project_form(form)
+    if error:
+        badges_json = form.get("badges", "")
+        return render_template("admin/projects/form.html", project={"_id": id, **form}, error=error, badges_json=badges_json, csrf_token=_generate_csrf())
+    try:
+        db = await _db_or_fail()
+        doc = build_project_doc(form)
+        doc["updated_at"] = datetime.now(timezone.utc)
+        await db.projects.update_one({"_id": ObjectId(id)}, {"$set": doc})
+        _projects_cache = None
+        return RedirectResponse("/admin?success=Project berhasil diupdate", status=302)
+    except Exception as e:
+        return render_template("admin/projects/form.html", project={"_id": id, **form}, error=f"Gagal update: {str(e)}", badges_json=form.get("badges", ""), csrf_token=_generate_csrf())
+
+
+@app.post("/admin/projects/<id>/delete")
+@admin_required
+async def admin_project_delete(req, id):
+    if not await mongo_is_connected():
+        return render_template("admin/dashboard.html", mongo_connected=False, projects=[], error="MongoDB tidak terhubung", csrf_token=_generate_csrf())
+    form = await req.form()
+    if not _validate_csrf(form):
+        return render_template("admin/dashboard.html", mongo_connected=True, projects=[], error="CSRF token invalid", csrf_token=_generate_csrf())
+    try:
+        db = await _db_or_fail()
+        await db.projects.delete_one({"_id": ObjectId(id)})
+        _projects_cache = None
+        return RedirectResponse("/admin?success=Project berhasil dihapus", status=302)
+    except Exception as e:
+        cursor = db.projects.find()
+        remaining = await cursor.to_list(None)
+        return render_template("admin/dashboard.html", mongo_connected=True, projects=remaining, error=f"Gagal hapus: {str(e)}", csrf_token=_generate_csrf())
+
+
+def validate_project_form(form):
+    if not form.get("title", "").strip():
+        return "Title wajib diisi"
+    return None
+
+
+def md_to_html(text):
+    html = _md_to_html(text or "", extensions=["fenced_code", "codehilite"])
+    return bleach.clean(
+        html,
+        tags=BLEACH_ALLOWED_TAGS,
+        attributes=BLEACH_ALLOWED_ATTRS,
+        protocols=BLEACH_ALLOWED_PROTOCOLS,
+        strip=True,
+    )
+
+
+def build_project_doc(form):
+    now = datetime.now(timezone.utc)
+    badges = []
+    raw_badges = form.get("badges", "").strip()
+    if raw_badges:
+        try:
+            badges = json.loads(raw_badges)
+            if not isinstance(badges, list):
+                badges = []
+        except json.JSONDecodeError:
+            badges = []
+    raw_description = form.get("description", "").strip()
+    converted = md_to_html(raw_description) if raw_description else ""
+    return {
+        "title": form.get("title", "").strip(),
+        "description": converted,
+        "description_raw": raw_description or converted,
+        "github": form.get("github", "").strip(),
+        "demo": form.get("demo", "").strip(),
+        "badges": badges,
+        "order": int(form.get("order", 0)),
+        "created_at": now,
+        "updated_at": now,
+    }
 
 # ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
-# IMPORTANT: Must pass `profile` to error.html because it extends base.html
-# which references profile.name, profile.tagline, profile.avatarUrl, etc.
-
 @app.exception(404)
 async def not_found(req, exc):
     """Handle 404 errors - render custom error page."""
@@ -240,8 +605,5 @@ async def server_error(req, exc):
     return render_template("error.html", status=500, message="Internal server error", profile=PROFILE), 500
 
 
-# ---------------------------------------------------------------------------
-# Direct execution (fallback if not using fenrir CLI)
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":  # pragma: no cover
     app.run()
