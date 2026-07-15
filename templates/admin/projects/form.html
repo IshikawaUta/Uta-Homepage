@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ "Edit" if project else "Tambah" }} Project - Admin CMS{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-8">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">{{ "Edit" if project else "Tambah" }} Project</h1>
+    <p class="mt-1 text-sm text-gray-500">
+      <a href="/admin" class="text-indigo-600 hover:text-indigo-800">&larr; Kembali ke dashboard</a>
+    </p>
+  </div>
+
+  {% if error %}
+  <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <form method="POST" action="{{ "/admin/projects/{}".format(project._id) if project else "/admin/projects" }}" class="space-y-5">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div>
+        <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
+        <input
+          type="text"
+          name="title"
+          id="title"
+          required
+          value="{{ project.title if project else '' }}"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        >
+      </div>
+
+      <div>
+        <label for="description" class="block text-sm font-medium text-gray-700">Description (Markdown supported)</label>
+        <textarea
+          name="description"
+          id="description"
+          rows="6"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+        >{{ project.description if project else '' }}</textarea>
+        <p class="mt-1 text-xs text-gray-400">Markdown didukung: **bold**, *italic*, `code`, [link](url), dll.</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="github" class="block text-sm font-medium text-gray-700">GitHub URL</label>
+          <input
+            type="url"
+            name="github"
+            id="github"
+            value="{{ project.github if project else '' }}"
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+        </div>
+        <div>
+          <label for="demo" class="block text-sm font-medium text-gray-700">Demo URL (optional)</label>
+          <input
+            type="url"
+            name="demo"
+            id="demo"
+            value="{{ project.demo if project else '' }}"
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="order" class="block text-sm font-medium text-gray-700">Order</label>
+          <input
+            type="number"
+            name="order"
+            id="order"
+            value="{{ project.order if project else '0' }}"
+            min="0"
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+        </div>
+      </div>
+
+      <div>
+        <label for="badges" class="block text-sm font-medium text-gray-700">Badges (JSON)</label>
+        <textarea
+          name="badges"
+          id="badges"
+          rows="4"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+        >{{ badges_json if badges_json else '' }}</textarea>
+        <p class="mt-1 text-xs text-gray-400">Array JSON. Contoh: [{"href": "...", "img": "...", "alt": "..."}]</p>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          class="rounded-md bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        >
+          {{ "Simpan" if project else "Tambah" }}
+        </button>
+        <a
+          href="/admin"
+          class="rounded-md border border-gray-300 bg-white px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >Batal</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
