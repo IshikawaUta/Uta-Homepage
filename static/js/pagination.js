@@ -185,7 +185,7 @@
       html += '</div>';
 
       // Description
-      html += '<p class="text-sm leading-relaxed text-muted-foreground">' + project.description + '</p>';
+      html += '<div class="prose">' + project.description + '</div>';
 
       // Links
       html += '<div class="mt-3 flex items-center gap-3">';
